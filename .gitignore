@@ -1,0 +1,14 @@
+*.pyc
+*.DS_Store
+.idea/
+config.json
+cache*
+engines*
+*.jpg
+*.log
+*.log.*
+*.html
+build/
+dist/
+*.egg-info/
+.env
