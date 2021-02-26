@@ -45,6 +45,7 @@ class BotWorker(object):
             self.driver.disconnect()
 
     def _handle_driver(self):
+        # TODO Make this only disconnect and reconnect the driver when the bot is idle
         if self.bot.driver is not None:
             if self.driver_config == self.bot.driver:
                 return
@@ -81,6 +82,7 @@ class BotWorker(object):
             get_a_job = self.resolver(GetAJob)
             get_a_job(self.bot.id)
 
+        # TODO Handle offline bots
         self.bot = event.bot
         self._handle_driver()
         self._handle_job_available()
