@@ -16,6 +16,19 @@ def get_version():
         raise RuntimeError("Unable to find version string in %s." % version_file)
 
 
+try:
+    from Cython.Build import cythonize
+    extensions = cythonize("bumblebee/host/drivers/printrun/gcoder_line.pyx")
+    from Cython.Distutils import build_ext
+except ImportError as e:
+    print("WARNING: Failed to cythonize: %s" % e)
+    # Debug helper: uncomment these:
+    # import traceback
+    # traceback.print_exc()
+    extensions = []
+    build_ext = None
+
+
 setup(name="bqclient",
       author="Zach 'Hoeken' Smith",
       author_email="hoeken@gmail.com",
@@ -25,6 +38,7 @@ setup(name="bqclient",
       version=get_version(),
       url="http://github.com/Hoektronics/bumblebee/",
       packages=find_packages(),
+      ext_modules=extensions,
       entry_points={
           "console_scripts": [
               "bumblebee = bumblebee.__main__:main",
@@ -32,6 +46,7 @@ setup(name="bqclient",
           ]
       },
       setup_requires=[
+          "Cython",
           "pytest-runner"
       ],
       install_requires=[

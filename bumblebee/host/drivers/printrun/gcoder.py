@@ -57,7 +57,7 @@ class PyLightLine:
         return None
 
 try:
-    from . import gcoder_line
+    from bumblebee.host.drivers.printrun import gcoder_line
     Line = gcoder_line.GLine
     LightLine = gcoder_line.GLightLine
 except Exception as e:
