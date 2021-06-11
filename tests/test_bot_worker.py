@@ -1,9 +1,10 @@
 import time
-from unittest.mock import MagicMock, Mock, call
+from unittest.mock import MagicMock, Mock, call, create_autospec
 
 import pytest
 
 from bumblebee.bot_worker import BotWorker
+from bumblebee.host.api.commands.bot_error import BotError
 from bumblebee.host.api.commands.finish_job import FinishJob
 from bumblebee.host.api.commands.get_a_job import GetAJob
 from bumblebee.host.api.commands.start_job import StartJob
@@ -168,6 +169,46 @@ class TestBotWorker(object):
         )
 
         BotEvents.BotHasJobAvailable(bot_for_event).fire()
+
+        worker.stop()
+
+        get_a_job.assert_not_called()
+
+    def test_bot_has_job_available_with_offline_bot_does_nothing(self, resolver):
+        get_a_job = MagicMock(GetAJob)
+        resolver.instance(get_a_job)
+
+        bot = Bot(
+            id=1,
+            name="Test Bot",
+            status="offline",
+            type="3d_printer",
+            job_available=False
+        )
+
+        worker: BotWorker = resolver(BotWorker, bot=bot)
+
+        BotEvents.BotHasJobAvailable(bot).fire()
+
+        worker.stop()
+
+        get_a_job.assert_not_called()
+
+    def test_bot_has_job_available_with_error_bot_does_nothing(self, resolver):
+        get_a_job = MagicMock(GetAJob)
+        resolver.instance(get_a_job)
+
+        bot = Bot(
+            id=1,
+            name="Test Bot",
+            status="error",
+            type="3d_printer",
+            job_available=False
+        )
+
+        worker: BotWorker = resolver(BotWorker, bot=bot)
+
+        BotEvents.BotHasJobAvailable(bot).fire()
 
         worker.stop()
 
@@ -481,3 +522,20 @@ class TestBotWorker(object):
         worker.stop()
 
         get_a_job.assert_not_called()
+
+    def test_bot_worker_started_on_working_job_sends_error(self, resolver):
+        bot_error = MagicMock()
+        resolver.instance(BotError, bot_error)
+
+        bot = Bot(
+            id=1,
+            name="Test Bot",
+            status="working",
+            type="3d_printer"
+        )
+
+        worker: BotWorker = resolver(BotWorker, bot=bot)
+        time.sleep(1)
+        worker.stop()
+
+        bot_error.assert_called_once_with(bot.id, 'Bot startup failure with job in working state')

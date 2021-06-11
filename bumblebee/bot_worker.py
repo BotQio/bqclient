@@ -4,6 +4,7 @@ from typing import Optional
 
 from bumblebee.host import on
 from bumblebee.host.api.botqueue_api import ErrorResponse
+from bumblebee.host.api.commands.bot_error import BotError
 from bumblebee.host.api.commands.finish_job import FinishJob
 from bumblebee.host.api.commands.get_a_job import GetAJob
 from bumblebee.host.api.commands.start_job import StartJob
@@ -31,7 +32,7 @@ class BotWorker(object):
         self.driver_config = None
         self.driver = None
 
-        self._current_job: Optional[Job] = None
+        self._current_job: Optional[Job] = bot.current_job
         self._thread = Thread(target=self._run, daemon=True)
         self._worker_should_be_stopped = Event()
         self._thread.start()
@@ -93,6 +94,9 @@ class BotWorker(object):
         if self.bot.id != event.bot.id:
             return
 
+        if self.bot.status != "idle":
+            return
+
         get_a_job = self.resolver(GetAJob)
         get_a_job(self.bot.id)
 
@@ -119,6 +123,11 @@ class BotWorker(object):
             self.log.error("Unknown other exception", exc_info=True)
 
     def _run(self):
+        if self.bot.status == "working":
+            bot_error_command: BotError = self.resolver(BotError)
+            bot_error_command(1, 'Bot startup failure with job in working state')
+            self.bot.status = "error"
+
         self._handle_driver()
         self._handle_job_available()
         self._handle_job_assignment()
