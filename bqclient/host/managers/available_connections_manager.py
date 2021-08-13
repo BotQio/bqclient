@@ -2,13 +2,13 @@ from bqclient.host.framework.logging import HostLogging
 from deepdiff import DeepDiff
 from serial.tools.list_ports import comports
 
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.framework.recurring_task import RecurringTask
 
 
 class AvailableConnectionsManager(object):
     def __init__(self,
-                 api: BotQueueApi,
+                 api: BotQioApi,
                  host_logging: HostLogging):
         self.api = api
         self.host_logger = host_logging.get_logger("AvailableConnectionsManager")

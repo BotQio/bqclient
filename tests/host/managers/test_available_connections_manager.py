@@ -2,14 +2,14 @@ from unittest.mock import Mock, MagicMock, patch, call
 
 from serial.tools.list_ports_common import ListPortInfo
 
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.framework.recurring_task import RecurringTask
 from bqclient.host.managers.available_connections_manager import AvailableConnectionsManager
 
 
 class TestAvailableConnectionsManager(object):
     def test_scanning_is_done_as_a_recurring_task(self, resolver):
-        resolver.instance(Mock(BotQueueApi))
+        resolver.instance(Mock(BotQioApi))
 
         mock_polling_thread = MagicMock(RecurringTask)
 
@@ -21,7 +21,7 @@ class TestAvailableConnectionsManager(object):
         mock_polling_thread.start.assert_called_once()
 
     def test_polling_searches_for_and_uploads_serial_ports(self, resolver):
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         resolver.instance(api)
 
         manager: AvailableConnectionsManager = resolver(AvailableConnectionsManager)
@@ -44,7 +44,7 @@ class TestAvailableConnectionsManager(object):
             ])
 
     def test_api_only_gets_called_once_if_nothing_has_changed_between_polling(self, resolver):
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         resolver.instance(api)
 
         manager: AvailableConnectionsManager = resolver(AvailableConnectionsManager)
@@ -68,7 +68,7 @@ class TestAvailableConnectionsManager(object):
             ])
 
     def test_changes_between_polling_calls_update(self, resolver):
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         resolver.instance(api)
 
         manager: AvailableConnectionsManager = resolver(AvailableConnectionsManager)

@@ -1,4 +1,4 @@
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.api.server import Server
 from bqclient.host.events import AuthFlowEvents
 from bqclient.host.types import Host
@@ -7,7 +7,7 @@ from bqclient.host.types import Host
 class ConvertRequestToHost(object):
     def __init__(self,
                  server: Server,
-                 api: BotQueueApi):
+                 api: BotQioApi):
         self._server = server
         self.api = api
 

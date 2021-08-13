@@ -10,7 +10,7 @@ class ErrorResponse(Exception):
         super(ErrorResponse, self).__init__(f"Error {code}: {message}")
 
 
-class BotQueueApi(object):
+class BotQioApi(object):
     def __init__(self,
                  rest_api: RestApi,
                  websocket_api: WebSocketApi):

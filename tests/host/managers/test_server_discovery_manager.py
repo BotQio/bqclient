@@ -93,7 +93,7 @@ class TestServerDiscoveryManager(object):
 
         assert not mock_service_browser.cancel_called
 
-    def test_add_service_ignores_server_if_botqueue_property_is_not_set(self, resolver, mock_zeroconf, fakes_events):
+    def test_add_service_ignores_server_if_botqio_property_is_not_set(self, resolver, mock_zeroconf, fakes_events):
         fakes_events.fake(ServerDiscovery.ServerDiscovered)
 
         server_discovery_manager: ServerDiscoveryManager = resolver(ServerDiscoveryManager)
@@ -105,12 +105,12 @@ class TestServerDiscoveryManager(object):
 
         assert not fakes_events.fired(ServerDiscovery.ServerDiscovered)
 
-    def test_add_service_emits_server_if_botqueue_string_property_is_set(self, resolver, mock_zeroconf, fakes_events):
+    def test_add_service_emits_server_if_botqio_string_property_is_set(self, resolver, mock_zeroconf, fakes_events):
         fakes_events.fake(ServerDiscovery.ServerDiscovered)
 
         server_discovery_manager: ServerDiscoveryManager = resolver(ServerDiscoveryManager)
 
-        info = FakeServiceInfo('example.test.', 80, {'botqueue': 1})
+        info = FakeServiceInfo('example.test.', 80, {'botqio': 1})
         mock_zeroconf.add_info(self.test_type, self.test_name, info)
 
         server_discovery_manager.add_service(mock_zeroconf, self.test_type, self.test_name)
@@ -119,12 +119,12 @@ class TestServerDiscoveryManager(object):
         assert event_assertion.once()
         assert event_assertion.event.url == "http://example.test"
 
-    def test_add_service_emits_server_if_botqueue_bytes_property_is_set(self, resolver, mock_zeroconf, fakes_events):
+    def test_add_service_emits_server_if_botqio_bytes_property_is_set(self, resolver, mock_zeroconf, fakes_events):
         fakes_events.fake(ServerDiscovery.ServerDiscovered)
 
         server_discovery_manager: ServerDiscoveryManager = resolver(ServerDiscoveryManager)
 
-        info = FakeServiceInfo('example.test.', 80, {b'botqueue': 1})
+        info = FakeServiceInfo('example.test.', 80, {b'botqio': 1})
         mock_zeroconf.add_info(self.test_type, self.test_name, info)
 
         server_discovery_manager.add_service(mock_zeroconf, self.test_type, self.test_name)
@@ -138,7 +138,7 @@ class TestServerDiscoveryManager(object):
 
         server_discovery_manager: ServerDiscoveryManager = resolver(ServerDiscoveryManager)
 
-        info = FakeServiceInfo('example.test.', 443, {b'botqueue': 1})
+        info = FakeServiceInfo('example.test.', 443, {b'botqio': 1})
         mock_zeroconf.add_info(self.test_type, self.test_name, info)
 
         server_discovery_manager.add_service(mock_zeroconf, self.test_type, self.test_name)
@@ -152,7 +152,7 @@ class TestServerDiscoveryManager(object):
 
         server_discovery_manager: ServerDiscoveryManager = resolver(ServerDiscoveryManager)
 
-        info = FakeServiceInfo('example.test', 80, {b'botqueue': 1})
+        info = FakeServiceInfo('example.test', 80, {b'botqio': 1})
         mock_zeroconf.add_info(self.test_type, self.test_name, info)
 
         server_discovery_manager.add_service(mock_zeroconf, self.test_type, self.test_name)

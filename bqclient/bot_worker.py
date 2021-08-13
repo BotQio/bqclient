@@ -3,7 +3,7 @@ from threading import Thread, Event
 from typing import Optional
 
 from bqclient.host import on
-from bqclient.host.api.botqueue_api import ErrorResponse
+from bqclient.host.api.botqio_api import ErrorResponse
 from bqclient.host.api.commands.bot_error import BotError
 from bqclient.host.api.commands.finish_job import FinishJob
 from bqclient.host.api.commands.get_a_job import GetAJob

@@ -1,4 +1,4 @@
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.api.server import Server
 from bqclient.host.configurations import HostConfiguration
 
@@ -6,7 +6,7 @@ from bqclient.host.configurations import HostConfiguration
 class RefreshAccessToken(object):
     def __init__(self,
                  config: HostConfiguration,
-                 api: BotQueueApi,
+                 api: BotQioApi,
                  server: Server):
         self.config = config
         self.api = api

@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.api.commands.get_host_request import GetHostRequest
 from bqclient.host.api.server import Server
 
@@ -12,7 +12,7 @@ class TestGetHostRequest(object):
 
         server.request_id = "request_id"
 
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.return_value = {
             "id": "request_id",
             "status": "request_status"

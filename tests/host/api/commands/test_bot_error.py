@@ -1,12 +1,12 @@
 from unittest.mock import Mock
 
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.api.commands.bot_error import BotError
 
 
 class TestBotError(object):
     def test_sending_error_string(self, resolver):
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.return_value = {}
         resolver.instance(api)
 
@@ -20,7 +20,7 @@ class TestBotError(object):
         })
 
     def test_sending_real_exception(self, resolver):
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.return_value = {}
         resolver.instance(api)
 

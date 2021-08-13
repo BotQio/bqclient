@@ -2,7 +2,7 @@ from typing import List
 
 from deepdiff import DeepDiff
 
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.events import BotEvents
 from bqclient.host.framework.recurring_task import RecurringTask
 from bqclient.host.types import Job, Bot
@@ -10,7 +10,7 @@ from bqclient.host.types import Job, Bot
 
 class BotsManager(object):
     def __init__(self,
-                 api: BotQueueApi):
+                 api: BotQioApi):
         self.api = api
 
         self._bots = {}

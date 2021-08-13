@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.api.commands.start_job import StartJob
 from bqclient.host.events import JobEvents
 
@@ -9,7 +9,7 @@ class TestStartJob(object):
     def test_starting_job(self, resolver, fakes_events):
         fakes_events.fake(JobEvents.JobStarted)
 
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.return_value = {
             "id": 1,
             "name": "My Job",

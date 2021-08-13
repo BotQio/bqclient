@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, Mock
 
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.api.commands.refresh_access_token import RefreshAccessToken
 from bqclient.host.api.server import Server
 
@@ -11,7 +11,7 @@ class TestRefreshAccessToken(object):
         resolver.instance(server)
         server.access_token = "fake_access_token"
 
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.return_value = {
             "access_token": "my_new_token",
             "host": {

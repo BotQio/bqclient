@@ -1,7 +1,7 @@
 import json
 from unittest.mock import Mock, MagicMock
 
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.events import BotEvents
 from bqclient.host.framework.recurring_task import RecurringTask
 from bqclient.host.managers.bots_manager import BotsManager
@@ -9,7 +9,7 @@ from bqclient.host.managers.bots_manager import BotsManager
 
 class TestBotsManager(object):
     def test_calling_start_kicks_off_the_polling_thread(self, resolver):
-        resolver.instance(Mock(BotQueueApi))
+        resolver.instance(Mock(BotQioApi))
 
         mock_polling_thread = MagicMock(RecurringTask)
 
@@ -24,7 +24,7 @@ class TestBotsManager(object):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotRemoved)
 
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.return_value = []
         resolver.instance(api)
 
@@ -40,7 +40,7 @@ class TestBotsManager(object):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotRemoved)
 
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.return_value = [
             {
                 "id": 1,
@@ -77,7 +77,7 @@ class TestBotsManager(object):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotRemoved)
 
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.return_value = [
             {
                 "id": 1,
@@ -123,7 +123,7 @@ class TestBotsManager(object):
             "driver": None,
         }
 
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.side_effect = [
             [bot],
             [bot]
@@ -161,7 +161,7 @@ class TestBotsManager(object):
             "job_available": True,
             "driver": None,
         }
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.side_effect = [
             [bot],
             []
@@ -208,7 +208,7 @@ class TestBotsManager(object):
             "job_available": True,
             "driver": None,
         }
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.side_effect = [
             [bot],
             [],
@@ -250,7 +250,7 @@ class TestBotsManager(object):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotUpdated)
 
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.side_effect = [
             [
                 {

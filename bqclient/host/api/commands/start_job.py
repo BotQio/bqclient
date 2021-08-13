@@ -1,11 +1,11 @@
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.events import JobEvents
 from bqclient.host.types import Job
 
 
 class StartJob(object):
     def __init__(self,
-                 api: BotQueueApi):
+                 api: BotQioApi):
         self.api = api
 
     def __call__(self, job_id):

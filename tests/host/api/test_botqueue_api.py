@@ -3,7 +3,7 @@ from unittest.mock import Mock, MagicMock, PropertyMock
 import pytest
 from requests import Response
 
-from bqclient.host.api.botqueue_api import BotQueueApi, ErrorResponse
+from bqclient.host.api.botqio_api import BotQioApi, ErrorResponse
 from bqclient.host.api.rest import RestApi
 from bqclient.host.api.socket import WebSocketApi
 
@@ -29,7 +29,7 @@ class TestBotQueueApi(object):
         rest_api.post.return_value = response
         resolver.instance(rest_api)
 
-        api = resolver(BotQueueApi)
+        api = resolver(BotQioApi)
         result = api.command("FakeTestCommand", {"some": "data"})
 
         connected_mock.assert_called()
@@ -66,7 +66,7 @@ class TestBotQueueApi(object):
         rest_api.post.return_value = response
         resolver.instance(rest_api)
 
-        api = resolver(BotQueueApi)
+        api = resolver(BotQioApi)
         result = api.command("FakeTestCommand")
 
         connected_mock.assert_called()
@@ -99,7 +99,7 @@ class TestBotQueueApi(object):
         rest_api.post.return_value = response
         resolver.instance(rest_api)
 
-        api = resolver(BotQueueApi)
+        api = resolver(BotQioApi)
 
         with pytest.raises(ErrorResponse) as exec_info:
             api.command("FakeTestCommand", {"some": "data"})

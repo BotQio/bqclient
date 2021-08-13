@@ -21,7 +21,7 @@ class ServerDiscoveryManager(zeroconf.ServiceListener, object):
         if info is None:
             return
 
-        if self._is_botqueue_server(info):
+        if self._is_botqio_server(info):
             url = self._get_url(info)
             print(f"Added server {url}")
 
@@ -36,8 +36,8 @@ class ServerDiscoveryManager(zeroconf.ServiceListener, object):
         pass
 
     @staticmethod
-    def _is_botqueue_server(info: zeroconf.ServiceInfo):
-        return 'botqueue' in info.properties or b'botqueue' in info.properties
+    def _is_botqio_server(info: zeroconf.ServiceInfo):
+        return 'botqio' in info.properties or b'botqio' in info.properties
 
     @staticmethod
     def _get_url(info: zeroconf.ServiceInfo):
@@ -46,7 +46,7 @@ class ServerDiscoveryManager(zeroconf.ServiceListener, object):
         elif info.port == 443:
             url = "https://"
         else:
-            raise ValueError(f"Unknown port for BotQueue zeroconf: {info.port}")
+            raise ValueError(f"Unknown port for BotQio zeroconf: {info.port}")
 
         url += info.server
 

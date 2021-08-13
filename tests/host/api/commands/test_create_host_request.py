@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.api.commands.create_host_request import CreateHostRequest
 from bqclient.host.api.server import Server
 from bqclient.host.events import AuthFlowEvents
@@ -13,7 +13,7 @@ class TestCreateHostRequest(object):
         server = resolver(Server, url="https://server/")
         resolver.instance(server)
 
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.return_value = {
                 "id": 1,
                 "status": "requested"

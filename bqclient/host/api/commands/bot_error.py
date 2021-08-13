@@ -1,11 +1,11 @@
 import traceback
 
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 
 
 class BotError(object):
     def __init__(self,
-                 api: BotQueueApi):
+                 api: BotQioApi):
         self.api = api
 
     def __call__(self, bot_id, error):

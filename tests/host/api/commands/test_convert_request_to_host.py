@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.api.commands.convert_request_to_host import ConvertRequestToHost
 from bqclient.host.api.server import Server
 from bqclient.host.events import AuthFlowEvents
@@ -15,7 +15,7 @@ class TestConvertRequestToHost(object):
 
         server.request_id = "request_id"
 
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.return_value = {
             "access_token": "my_token",
             "host": {

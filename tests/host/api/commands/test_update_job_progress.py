@@ -1,12 +1,12 @@
 from unittest.mock import Mock
 
-from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.api.commands.update_job_progress import UpdateJobProgress
 
 
 class TestUpdateJobProgress(object):
     def test_updating_job_progress_calls_correct_command(self, resolver):
-        api = Mock(BotQueueApi)
+        api = Mock(BotQioApi)
         api.command.return_value = {
             "id": 1,
             "name": "My Job",
