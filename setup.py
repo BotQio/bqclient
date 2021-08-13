@@ -48,6 +48,7 @@ setup(name="bqclient",
       ],
       install_requires=[
           'appdirs',
+          'click',
           'deepdiff',
           'requests',
           'pyserial',

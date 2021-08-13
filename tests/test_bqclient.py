@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from bqclient.bot_worker import BotWorker
-from bqclient.bqclient import BQClient
+from bqclient.client import BQClient
 from bqclient.host.events import BotEvents
 from bqclient.host.types import Bot, User
 

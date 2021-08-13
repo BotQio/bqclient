@@ -1,6 +1,5 @@
 from bqclient.bot_worker import BotWorker
 from bqclient.host import on
-from bqclient.host.configurations import HostConfiguration
 from bqclient.host.events import HostEvents, AuthFlowEvents
 from bqclient.host.events import BotEvents
 from bqclient.host.framework.events import bind_events
