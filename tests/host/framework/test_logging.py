@@ -1,7 +1,7 @@
 import os
 from logging import FileHandler
 
-from bumblebee.host.framework.logging import HostLogging
+from bqclient.host.framework.logging import HostLogging
 
 
 class TestHostLogging(object):

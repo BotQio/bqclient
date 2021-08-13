@@ -1,19 +1,19 @@
 import time
-from unittest.mock import MagicMock, Mock, call, create_autospec
+from unittest.mock import MagicMock, Mock, call
 
 import pytest
 
-from bumblebee.bot_worker import BotWorker
-from bumblebee.host.api.commands.bot_error import BotError
-from bumblebee.host.api.commands.finish_job import FinishJob
-from bumblebee.host.api.commands.get_a_job import GetAJob
-from bumblebee.host.api.commands.start_job import StartJob
-from bumblebee.host.downloader import Downloader
-from bumblebee.host.drivers.driver_factory import DriverFactory
-from bumblebee.host.drivers.dummy import DummyDriver
-from bumblebee.host.drivers.printrun_driver import PrintrunDriver
-from bumblebee.host.events import JobEvents, BotEvents
-from bumblebee.host.types import Bot, Job
+from bqclient.bot_worker import BotWorker
+from bqclient.host.api.commands.bot_error import BotError
+from bqclient.host.api.commands.finish_job import FinishJob
+from bqclient.host.api.commands.get_a_job import GetAJob
+from bqclient.host.api.commands.start_job import StartJob
+from bqclient.host.downloader import Downloader
+from bqclient.host.drivers.driver_factory import DriverFactory
+from bqclient.host.drivers.dummy import DummyDriver
+from bqclient.host.drivers.printrun_driver import PrintrunDriver
+from bqclient.host.events import JobEvents, BotEvents
+from bqclient.host.types import Bot, Job
 
 
 class TestBotWorker(object):

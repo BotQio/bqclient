@@ -1,6 +1,6 @@
 import json
 
-from bumblebee.host.types import Bot
+from bqclient.host.types import Bot
 
 
 class TestTypes(object):

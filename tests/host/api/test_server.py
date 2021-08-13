@@ -1,5 +1,5 @@
-from bumblebee.host.api.server import Server
-from bumblebee.host.configurations import HostConfiguration
+from bqclient.host.api.server import Server
+from bqclient.host.configurations import HostConfiguration
 
 
 class TestServer(object):

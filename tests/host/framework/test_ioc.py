@@ -1,6 +1,6 @@
 import pytest
 
-from bumblebee.host.framework.ioc import Resolver, FailureToBindException, singleton
+from bqclient.host.framework.ioc import Resolver, FailureToBindException, singleton
 
 
 class NoArgumentFakeClass(object):

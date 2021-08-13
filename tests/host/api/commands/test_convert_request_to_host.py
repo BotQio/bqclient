@@ -1,9 +1,9 @@
 from unittest.mock import Mock
 
-from bumblebee.host.api.botqueue_api import BotQueueApi
-from bumblebee.host.api.commands.convert_request_to_host import ConvertRequestToHost
-from bumblebee.host.api.server import Server
-from bumblebee.host.events import AuthFlowEvents
+from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.commands.convert_request_to_host import ConvertRequestToHost
+from bqclient.host.api.server import Server
+from bqclient.host.events import AuthFlowEvents
 
 
 class TestConvertRequestToHost(object):

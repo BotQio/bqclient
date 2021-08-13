@@ -1,5 +1,5 @@
-from bumblebee.host.framework.events import EventBag, Event, EventManager, on, bind_events
-from bumblebee.host.framework.ioc import Resolver
+from bqclient.host.framework.events import EventBag, Event, EventManager, on, bind_events
+from bqclient.host.framework.ioc import Resolver
 
 
 class FakeEvents(EventBag):

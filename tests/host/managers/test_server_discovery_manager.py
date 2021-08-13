@@ -1,8 +1,8 @@
 import pytest
 import zeroconf
 
-from bumblebee.host.events import ServerDiscovery
-from bumblebee.host.managers.server_discovery_manager import ServerDiscoveryManager
+from bqclient.host.events import ServerDiscovery
+from bqclient.host.managers.server_discovery_manager import ServerDiscoveryManager
 
 
 class FakeServiceInfo(object):

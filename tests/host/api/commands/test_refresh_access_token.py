@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock, Mock
 
-from bumblebee.host.api.botqueue_api import BotQueueApi
-from bumblebee.host.api.commands.refresh_access_token import RefreshAccessToken
-from bumblebee.host.api.server import Server
+from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.commands.refresh_access_token import RefreshAccessToken
+from bqclient.host.api.server import Server
 
 
 class TestRefreshAccessToken(object):

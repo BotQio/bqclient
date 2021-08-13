@@ -1,10 +1,10 @@
 import json
 from unittest.mock import Mock, MagicMock
 
-from bumblebee.host.api.botqueue_api import BotQueueApi
-from bumblebee.host.events import BotEvents
-from bumblebee.host.framework.recurring_task import RecurringTask
-from bumblebee.host.managers.bots_manager import BotsManager
+from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.events import BotEvents
+from bqclient.host.framework.recurring_task import RecurringTask
+from bqclient.host.managers.bots_manager import BotsManager
 
 
 class TestBotsManager(object):

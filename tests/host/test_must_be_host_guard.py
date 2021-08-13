@@ -1,14 +1,14 @@
 from unittest.mock import MagicMock, call
 
-from bumblebee.host.api.commands.convert_request_to_host import ConvertRequestToHost
-from bumblebee.host.api.commands.refresh_access_token import RefreshAccessToken
-from bumblebee.host.api.commands.create_host_request import CreateHostRequest
-from bumblebee.host.api.commands.get_host_request import GetHostRequest
-from bumblebee.host.api.server import Server
-from bumblebee.host.configurations import HostConfiguration
-from bumblebee.host.events import ServerDiscovery
-from bumblebee.host.managers.server_discovery_manager import ServerDiscoveryManager
-from bumblebee.host.must_be_host_guard import MustBeHostGuard
+from bqclient.host.api.commands.convert_request_to_host import ConvertRequestToHost
+from bqclient.host.api.commands.refresh_access_token import RefreshAccessToken
+from bqclient.host.api.commands.create_host_request import CreateHostRequest
+from bqclient.host.api.commands.get_host_request import GetHostRequest
+from bqclient.host.api.server import Server
+from bqclient.host.configurations import HostConfiguration
+from bqclient.host.events import ServerDiscovery
+from bqclient.host.managers.server_discovery_manager import ServerDiscoveryManager
+from bqclient.host.must_be_host_guard import MustBeHostGuard
 
 
 class TestMustBeHostGuard(object):

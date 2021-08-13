@@ -1,8 +1,8 @@
 from unittest.mock import Mock
 
-from bumblebee.host.api.botqueue_api import BotQueueApi
-from bumblebee.host.api.commands.get_host_request import GetHostRequest
-from bumblebee.host.api.server import Server
+from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.commands.get_host_request import GetHostRequest
+from bqclient.host.api.server import Server
 
 
 class TestGetHostRequest(object):

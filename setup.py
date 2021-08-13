@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 
 def get_version():
-    version_file = "bumblebee/_version.py"
+    version_file = "bqclient/_version.py"
     line = open(version_file, "rt").read()
     version_regex = r"^__version__\s*=\s*['\"]([^'\"]*)['\"]"
 
@@ -18,7 +18,7 @@ def get_version():
 
 try:
     from Cython.Build import cythonize
-    extensions = cythonize("bumblebee/host/drivers/printrun/gcoder_line.pyx")
+    extensions = cythonize("bqclient/host/drivers/printrun/gcoder_line.pyx")
     from Cython.Distutils import build_ext
 except ImportError as e:
     print("WARNING: Failed to cythonize: %s" % e)
@@ -30,19 +30,16 @@ except ImportError as e:
 
 
 setup(name="bqclient",
-      author="Zach 'Hoeken' Smith",
-      author_email="hoeken@gmail.com",
-      maintainer="Justin Nesselrotte",
-      maintainer_email="admin@jnesselr.org",
-      description="BotQueue's client bumblebee",
+      author="Justin Nesselrotte",
+      author_email="admin@jnesselr.org",
+      description="BotQio's client bqclient",
       version=get_version(),
-      url="http://github.com/Hoektronics/bumblebee/",
+      url="http://github.com/BotQio/bqclient/",
       packages=find_packages(),
       ext_modules=extensions,
       entry_points={
           "console_scripts": [
-              "bumblebee = bumblebee.__main__:main",
-              "bqclient = bumblebee.__main__:main"
+              "bqclient = bqclient.__main__:main"
           ]
       },
       setup_requires=[

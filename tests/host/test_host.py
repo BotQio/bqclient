@@ -2,10 +2,10 @@ import time
 from threading import Thread
 from unittest.mock import Mock
 
-from bumblebee.host import Host
-from bumblebee.host.events import HostEvents
-from bumblebee.host.managers.bots_manager import BotsManager
-from bumblebee.host.managers.available_connections_manager import AvailableConnectionsManager
+from bqclient.host import Host
+from bqclient.host.events import HostEvents
+from bqclient.host.managers.bots_manager import BotsManager
+from bqclient.host.managers.available_connections_manager import AvailableConnectionsManager
 
 
 class TestHost(object):

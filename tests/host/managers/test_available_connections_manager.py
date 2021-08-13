@@ -2,9 +2,9 @@ from unittest.mock import Mock, MagicMock, patch, call
 
 from serial.tools.list_ports_common import ListPortInfo
 
-from bumblebee.host.api.botqueue_api import BotQueueApi
-from bumblebee.host.framework.recurring_task import RecurringTask
-from bumblebee.host.managers.available_connections_manager import AvailableConnectionsManager
+from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.framework.recurring_task import RecurringTask
+from bqclient.host.managers.available_connections_manager import AvailableConnectionsManager
 
 
 class TestAvailableConnectionsManager(object):
@@ -26,7 +26,7 @@ class TestAvailableConnectionsManager(object):
 
         manager: AvailableConnectionsManager = resolver(AvailableConnectionsManager)
 
-        with patch('bumblebee.host.managers.available_connections_manager.comports') as comports:
+        with patch('bqclient.host.managers.available_connections_manager.comports') as comports:
             port_info = MagicMock(ListPortInfo)
             port_info.device = "/dev/test-device"
 
@@ -49,7 +49,7 @@ class TestAvailableConnectionsManager(object):
 
         manager: AvailableConnectionsManager = resolver(AvailableConnectionsManager)
 
-        with patch('bumblebee.host.managers.available_connections_manager.comports') as comports:
+        with patch('bqclient.host.managers.available_connections_manager.comports') as comports:
             port_info = MagicMock(ListPortInfo)
             port_info.device = "/dev/test-device"
 
@@ -73,7 +73,7 @@ class TestAvailableConnectionsManager(object):
 
         manager: AvailableConnectionsManager = resolver(AvailableConnectionsManager)
 
-        with patch('bumblebee.host.managers.available_connections_manager.comports') as comports:
+        with patch('bqclient.host.managers.available_connections_manager.comports') as comports:
             port_info_a = MagicMock(ListPortInfo)
             port_info_a.device = "/dev/test-device"
             port_info_b = MagicMock(ListPortInfo)

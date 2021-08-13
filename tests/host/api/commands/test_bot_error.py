@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
-from bumblebee.host.api.botqueue_api import BotQueueApi
-from bumblebee.host.api.commands.bot_error import BotError
+from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.commands.bot_error import BotError
 
 
 class TestBotError(object):

@@ -1,4 +1,4 @@
-from bumblebee.host.configurations import HostConfiguration
+from bqclient.host.configurations import HostConfiguration
 
 
 class TestHostConfiguration(object):

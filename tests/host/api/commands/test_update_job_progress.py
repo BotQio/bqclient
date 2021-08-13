@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
-from bumblebee.host.api.botqueue_api import BotQueueApi
-from bumblebee.host.api.commands.update_job_progress import UpdateJobProgress
+from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.commands.update_job_progress import UpdateJobProgress
 
 
 class TestUpdateJobProgress(object):

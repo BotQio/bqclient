@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
 
-from bumblebee.host.api.rest import RestApi
-from bumblebee.host.api.server import Server
-from bumblebee.host.configurations import HostConfiguration
+from bqclient.host.api.rest import RestApi
+from bqclient.host.api.server import Server
+from bqclient.host.configurations import HostConfiguration
 
 
 class TestRestApi(object):

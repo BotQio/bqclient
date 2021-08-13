@@ -1,7 +1,7 @@
-BumbleBee
+BQClient
 ---------
 
-BotQueue's client 'bumblebee'. This software is used to
+BotQio's client 'bqclient'. This software is used to
 remotely control a 3d printer. If you have a printer that
 isn't currently supported with this software, please let
 us know on the github issues page.
@@ -9,14 +9,12 @@ us know on the github issues page.
 System Requirements
 -------------------
 - Mac OS X, Linux, or Raspberry PI
-- Python 2.7 or above, untested on Python 3
+- Python 3.7 or above
 
 Links:
-- https://botqueue.com/
-- https://github.com/Hoektronics/BotQueue
-- https://github.com/Hoektronics/engines
+- https://botq.io/
+- https://github.com/BotQio/BQClient
 
 Authors
 -------
-- Zach 'Hoeken' Smith
 - Justin Nesselrotte

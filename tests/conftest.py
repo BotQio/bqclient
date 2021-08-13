@@ -7,8 +7,8 @@ import requests
 from appdirs import AppDirs
 from requests import Response
 
-from bumblebee.host.framework.events import Event, EventManager
-from bumblebee.host.framework.ioc import Resolver
+from bqclient.host.framework.events import Event, EventManager
+from bqclient.host.framework.ioc import Resolver
 
 
 @pytest.fixture

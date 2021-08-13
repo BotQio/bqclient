@@ -3,9 +3,9 @@ from unittest.mock import Mock, MagicMock, PropertyMock
 import pytest
 from requests import Response
 
-from bumblebee.host.api.botqueue_api import BotQueueApi, ErrorResponse
-from bumblebee.host.api.rest import RestApi
-from bumblebee.host.api.socket import WebSocketApi
+from bqclient.host.api.botqueue_api import BotQueueApi, ErrorResponse
+from bqclient.host.api.rest import RestApi
+from bqclient.host.api.socket import WebSocketApi
 
 
 class TestBotQueueApi(object):

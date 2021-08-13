@@ -2,10 +2,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from bumblebee.bot_worker import BotWorker
-from bumblebee.bqclient import BQClient
-from bumblebee.host.events import BotEvents
-from bumblebee.host.types import Bot, User
+from bqclient.bot_worker import BotWorker
+from bqclient.bqclient import BQClient
+from bqclient.host.events import BotEvents
+from bqclient.host.types import Bot, User
 
 
 class TestBQClient(object):

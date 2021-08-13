@@ -1,7 +1,7 @@
 from threading import Event
 from unittest.mock import MagicMock
 
-from bumblebee.host.framework.recurring_task import RecurringTask
+from bqclient.host.framework.recurring_task import RecurringTask
 
 
 class TestRecurringTask(object):

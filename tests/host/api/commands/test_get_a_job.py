@@ -1,8 +1,8 @@
 from unittest.mock import Mock
 
-from bumblebee.host.api.botqueue_api import BotQueueApi
-from bumblebee.host.api.commands.get_a_job import GetAJob
-from bumblebee.host.events import JobEvents
+from bqclient.host.api.botqueue_api import BotQueueApi
+from bqclient.host.api.commands.get_a_job import GetAJob
+from bqclient.host.events import JobEvents
 
 
 class TestGetAJob(object):
