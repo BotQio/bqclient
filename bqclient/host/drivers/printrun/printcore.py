@@ -1,21 +1,9 @@
-# This file is part of the Printrun suite.
-#
-# Printrun is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# Printrun is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Printrun.  If not, see <http://www.gnu.org/licenses/>.
-
-__version__ = "2.0.0rc8"
+# This file is originally from printrun, but has been modified heavily for BotQio.
+# Please see the original repo here: https://github.com/kliment/Printrun
 
 import sys
+
+from bqclient.host.drivers.printrun.eventhandler import PrinterEventHandler, ProxyEventHandler
 
 if sys.version_info.major < 3:
     print("You need to run this on Python 3")
@@ -79,8 +67,8 @@ SYS_EOF = b''  # python's marker for EOF
 SYS_AGAIN = None  # python's marker for timeout/no data
 
 
-class printcore():
-    def __init__(self, port=None, baud=None, dtr=None):
+class PrintCore(object):
+    def __init__(self, port=None, baud=None):
         """Initializes a printcore instance. Pass the port and baud rate to
            connect immediately"""
         self.baud = None
@@ -107,16 +95,6 @@ class printcore():
         self.log = deque(maxlen=10000)
         self.sent = []
         self.writefailures = 0
-        self.tempcb = None  # impl (wholeline)
-        self.recvcb = None  # impl (wholeline)
-        self.sendcb = None  # impl (wholeline)
-        self.preprintsendcb = None  # impl (wholeline)
-        self.printsendcb = None  # impl (wholeline)
-        self.layerchangecb = None  # impl (wholeline)
-        self.errorcb = None  # impl (wholeline)
-        self.startcb = None  # impl ()
-        self.endcb = None  # impl ()
-        self.onlinecb = None  # impl ()
         self.loud = False  # emit sent and received lines to terminal
         self.tcp_streaming_mode = False
         self.greetings = ['start', 'Grbl ']
@@ -128,43 +106,28 @@ class printcore():
         self.print_thread = None
         self.readline_buf = []
         self.selector = None
-        self.event_handler = []
+        self._event_proxy = ProxyEventHandler([])
         # Not all platforms need to do this parity workaround, and some drivers
         # don't support it.  Limit it to platforms that actually require it
         # here to avoid doing redundant work elsewhere and potentially breaking
         # things.
         self.needs_parity_workaround = platform.system() == "linux" and os.path.exists("/etc/debian")
-        for handler in self.event_handler:
-            try:
-                handler.on_init()
-            except:
-                logging.error(traceback.format_exc())
+        self._event_proxy.on_init()
         if port is not None and baud is not None:
             self.connect(port, baud)
         self.xy_feedrate = None
         self.z_feedrate = None
 
-    def addEventHandler(self, handler):
-        '''
+    def add_event_handler(self, handler: PrinterEventHandler):
+        """
         Adds an event handler.
 
-        @param handler: The handler to be added.
-        '''
-        self.event_handler.append(handler)
+        :param handler: The handler to be added.
+        """
+        self._event_proxy.add_handler(handler)
 
     def logError(self, error):
-        for handler in self.event_handler:
-            try:
-                handler.on_error(error)
-            except:
-                logging.error(traceback.format_exc())
-        if self.errorcb:
-            try:
-                self.errorcb(error)
-            except:
-                logging.error(traceback.format_exc())
-        else:
-            logging.error(error)
+        self._event_proxy.on_error(error)
 
     @locked
     def disconnect(self):
@@ -195,11 +158,7 @@ class printcore():
             except OSError:
                 logging.error(traceback.format_exc())
                 pass
-        for handler in self.event_handler:
-            try:
-                handler.on_disconnect()
-            except:
-                logging.error(traceback.format_exc())
+        self._event_proxy.on_disconnect()
         self.printer = None
         self.online = False
         self.printing = False
@@ -287,11 +246,7 @@ class printcore():
                                   "\n" + _("IO error: %s") % e)
                     self.printer = None
                     return
-            for handler in self.event_handler:
-                try:
-                    handler.on_connect()
-                except:
-                    logging.error(traceback.format_exc())
+            self._event_proxy.on_connect()
             self.stop_read_thread = False
             self.read_thread = threading.Thread(target=self._listen,
                                                 name='read thread')
@@ -357,16 +312,7 @@ class printcore():
 
             if len(line) > 1:
                 self.log.append(line)
-                for handler in self.event_handler:
-                    try:
-                        handler.on_recv(line)
-                    except:
-                        logging.error(traceback.format_exc())
-                if self.recvcb:
-                    try:
-                        self.recvcb(line)
-                    except:
-                        self.logError(traceback.format_exc())
+                self._event_proxy.on_receive(line)
                 if self.loud: logging.info("RECV: %s" % line.rstrip())
             return line
         except UnicodeDecodeError:
@@ -436,16 +382,7 @@ class printcore():
                 if line.startswith(tuple(self.greetings)) \
                         or line.startswith('ok') or "T:" in line:
                     self.online = True
-                    for handler in self.event_handler:
-                        try:
-                            handler.on_online()
-                        except:
-                            logging.error(traceback.format_exc())
-                    if self.onlinecb:
-                        try:
-                            self.onlinecb()
-                        except:
-                            self.logError(traceback.format_exc())
+                    self._event_proxy.on_online()
                     return
 
     def _listen(self):
@@ -464,17 +401,7 @@ class printcore():
             if line.startswith(tuple(self.greetings)) or line.startswith('ok'):
                 self.clear = True
             if line.startswith('ok') and "T:" in line:
-                for handler in self.event_handler:
-                    try:
-                        handler.on_temp(line)
-                    except:
-                        logging.error(traceback.format_exc())
-                if self.tempcb:
-                    # callback for temp, status, whatever
-                    try:
-                        self.tempcb(line)
-                    except:
-                        self.logError(traceback.format_exc())
+                self._event_proxy.on_temp(line)
             elif line.startswith('Error'):
                 self.logError(line)
             # Teststrings for resend parsing       # Firmware     exp. result
@@ -642,35 +569,13 @@ class printcore():
     def _print(self, resuming=False):
         self._stop_sender()
         try:
-            for handler in self.event_handler:
-                try:
-                    handler.on_start(resuming)
-                except:
-                    logging.error(traceback.format_exc())
-            if self.startcb:
-                # callback for printing started
-                try:
-                    self.startcb(resuming)
-                except:
-                    self.logError(_("Print start callback failed with:") +
-                                  "\n" + traceback.format_exc())
+            self._event_proxy.on_start(resuming)
             while self.printing and self.printer and self.online:
                 self._sendnext()
             self.sentlines = {}
             self.log.clear()
             self.sent = []
-            for handler in self.event_handler:
-                try:
-                    handler.on_end()
-                except:
-                    logging.error(traceback.format_exc())
-            if self.endcb:
-                # callback for printing done
-                try:
-                    self.endcb()
-                except:
-                    self.logError(_("Print end callback failed with:") +
-                                  "\n" + traceback.format_exc())
+            self._event_proxy.on_end()
         except:
             self.logError(_("Print thread died due to the following error:") +
                           "\n" + traceback.format_exc())
@@ -711,30 +616,8 @@ class printcore():
             if self.queueindex > 0:
                 (prev_layer, prev_line) = self.mainqueue.idxs(self.queueindex - 1)
                 if prev_layer != layer:
-                    for handler in self.event_handler:
-                        try:
-                            handler.on_layerchange(layer)
-                        except:
-                            logging.error(traceback.format_exc())
-            if self.layerchangecb and self.queueindex > 0:
-                (prev_layer, prev_line) = self.mainqueue.idxs(self.queueindex - 1)
-                if prev_layer != layer:
-                    try:
-                        self.layerchangecb(layer)
-                    except:
-                        self.logError(traceback.format_exc())
-            for handler in self.event_handler:
-                try:
-                    handler.on_preprintsend(gline, self.queueindex, self.mainqueue)
-                except:
-                    logging.error(traceback.format_exc())
-            if self.preprintsendcb:
-                if self.mainqueue.has_index(self.queueindex + 1):
-                    (next_layer, next_line) = self.mainqueue.idxs(self.queueindex + 1)
-                    next_gline = self.mainqueue.all_layers[next_layer][next_line]
-                else:
-                    next_gline = None
-                gline = self.preprintsendcb(gline, next_gline)
+                    self._event_proxy.on_layer_change(layer)
+            self._event_proxy.on_pre_print_send(gline, self.queueindex, self.mainqueue)
             if gline is None:
                 self.queueindex += 1
                 self.clear = True
@@ -751,16 +634,7 @@ class printcore():
             if tline:
                 self._send(tline, self.lineno, True)
                 self.lineno += 1
-                for handler in self.event_handler:
-                    try:
-                        handler.on_printsend(gline)
-                    except:
-                        logging.error(traceback.format_exc())
-                if self.printsendcb:
-                    try:
-                        self.printsendcb(gline)
-                    except:
-                        self.logError(traceback.format_exc())
+                self._event_proxy.on_print_send(gline)
             else:
                 self.clear = True
             self.queueindex += 1
@@ -791,16 +665,7 @@ class printcore():
             if self.loud:
                 logging.info("SENT: %s" % command)
 
-            for handler in self.event_handler:
-                try:
-                    handler.on_send(command, gline)
-                except:
-                    logging.error(traceback.format_exc())
-            if self.sendcb:
-                try:
-                    self.sendcb(command, gline)
-                except:
-                    self.logError(traceback.format_exc())
+            self._event_proxy.on_send(command, gline)
             try:
                 self.printer.write((command + "\n").encode('ascii'))
                 if self.printer_tcp:

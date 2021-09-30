@@ -1,6 +1,6 @@
 import time
 
-from bqclient.host.drivers.printrun.printcore import printcore
+from bqclient.host.drivers.printrun.printcore import PrintCore
 from bqclient.host.drivers.printrun.gcoder import LightGCode
 
 
@@ -12,7 +12,7 @@ class PrintrunDriver(object):
         if "baud" in config["connection"]:
             self.baud_rate = config["connection"]["baud"]
 
-        self.printcore = printcore()
+        self.printcore = PrintCore()
 
     def connect(self):
         self.printcore.connect(self.serial_port, self.baud_rate)
