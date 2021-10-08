@@ -37,11 +37,11 @@ class PrintrunDriver(object):
 
         gcode = LightGCode(gcode)
 
-        self.printcore.startprint(gcode)
+        self.printcore.start_print(gcode)
 
         while self.printcore.printing:
             time.sleep(5)
 
-            progress = 100.0 * (float(self.printcore.queueindex) / float(len(self.printcore.mainqueue)))
+            progress = 100.0 * (float(self.printcore.main_queue_index) / float(len(self.printcore.main_queue)))
             if update_job_progress is not None:
                 update_job_progress(progress)

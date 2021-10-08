@@ -19,7 +19,7 @@ from bqclient.host.drivers.printrun.utils import set_utf8_locale, install_locale
 
 try:
     set_utf8_locale()
-except:
+except BaseException:
     pass
 install_locale('pronterface')
 
@@ -34,12 +34,6 @@ def locked(f):
     return inner
 
 
-PR_EOF = None  # printrun's marker for EOF
-PR_AGAIN = b''  # printrun's marker for timeout/no data
-SYS_EOF = b''  # python's marker for EOF
-SYS_AGAIN = None  # python's marker for timeout/no data
-
-
 class PrintCore(object):
     def __init__(self):
         self._connection: Optional[PrinterConnection] = None
@@ -51,13 +45,13 @@ class PrintCore(object):
         self.online = False
         # is a print currently running, true if printing, false if paused
         self.printing = False
-        self.mainqueue = None
-        self.priqueue = Queue(0)
-        self.queueindex = 0
+        self.main_queue = None
+        self.priority_queue = Queue(0)
+        self.main_queue_index = 0
         self.lineno = 0
-        self.resendfrom = -1
+        self.resend_from = -1
         self.paused = False
-        self.sentlines = {}
+        self.sent_lines = {}
         self.log = deque(maxlen=10000)
         self.sent = []
         self.write_failures = 0
@@ -75,6 +69,14 @@ class PrintCore(object):
         self.xy_feedrate = None
         self.z_feedrate = None
 
+        self.pause_x_coordinate = None
+        self.pause_y_coordinate = None
+        self.pause_z_coordinate = None
+        self.pause_e_coordinate = None
+        self.pause_f_coordinate = None
+        self.relative_pause = None
+        self.relative_pause_e = None
+
     def add_event_handler(self, handler: PrinterEventHandler):
         """
         Adds an event handler.
@@ -83,7 +85,7 @@ class PrintCore(object):
         """
         self._event_proxy.add_handler(handler)
 
-    def logError(self, error):
+    def log_error(self, error):
         self._event_proxy.on_error(error)
 
     @locked
@@ -127,7 +129,7 @@ class PrintCore(object):
         try:
             return self._connection.read()
         except CannotReadFromPrinter:
-            self.logError("Exception occurred due to cannot read from printer!")
+            self.log_error("Exception occurred due to cannot read from printer!")
             raise
             # self.logException(ex)  # Need to determine exactly how this works in the calling function
 
@@ -154,7 +156,8 @@ class PrintCore(object):
                 # before resending
                 if not line:
                     empty_lines += 1
-                    if empty_lines == 15: break
+                    if empty_lines == 15:
+                        break
                 else:
                     empty_lines = 0
                 if line.startswith(tuple(self.greetings)) \
@@ -164,8 +167,7 @@ class PrintCore(object):
                     return
 
     def _listen(self):
-        """This function acts on messages from the firmware
-        """
+        """This function acts on messages from the firmware"""
         self.clear_to_send = True
         if not self.printing:
             self._listen_until_online()
@@ -184,19 +186,19 @@ class PrintCore(object):
             if line.startswith('ok') and "T:" in line:
                 self._event_proxy.on_temp(line)
             elif line.startswith('Error'):
-                self.logError(line)
-            # Teststrings for resend parsing       # Firmware     exp. result
+                self.log_error(line)
+            # Test strings for resend parsing       # Firmware     exp. result
             # line="rs N2 Expected checksum 67"    # Teacup       2
             if line.lower().startswith("resend") or line.startswith("rs"):
                 for haystack in ["N:", "N", ":"]:
                     line = line.replace(haystack, " ")
-                linewords = line.split()
-                while len(linewords) != 0:
+                line_words = line.split()
+                while len(line_words) != 0:
                     try:
-                        toresend = int(linewords.pop(0))
-                        self.resendfrom = toresend
+                        to_resend = int(line_words.pop(0))
+                        self.resend_from = to_resend
                         break
-                    except:
+                    except BaseException:
                         pass
                 self.clear_to_send = True
         self.clear_to_send = True
@@ -217,7 +219,7 @@ class PrintCore(object):
     def _sender(self):
         while not self.stop_send_thread:
             try:
-                command = self.priqueue.get(True, 0.1)
+                command = self.priority_queue.get(True, 0.1)
             except QueueEmpty:
                 continue
             while self._connection is not None and self.printing and not self.clear_to_send:
@@ -226,10 +228,11 @@ class PrintCore(object):
             while self._connection is not None and self.printing and not self.clear_to_send:
                 time.sleep(0.001)
 
-    def _checksum(self, command):
+    @staticmethod
+    def _checksum(command):
         return reduce(lambda x, y: x ^ y, map(ord, command))
 
-    def startprint(self, gcode, startindex=0):
+    def start_print(self, gcode):
         """Start a print, gcode is an array of gcode commands.
         returns True on success, False if already printing.
         The print queue will be replaced with the contents of the data array,
@@ -238,46 +241,34 @@ class PrintCore(object):
         """
         if self.printing or not self.online or self._connection is None:
             return False
-        self.queueindex = startindex
-        self.mainqueue = gcode
+        self.main_queue_index = 0
+        self.main_queue = gcode
         self.printing = True
         self.lineno = 0
-        self.resendfrom = -1
+        self.resend_from = -1
         if not gcode or not gcode.lines:
             return True
 
         self.clear_to_send = False
         self._send("M110", -1, True)
 
-        resuming = (startindex != 0)
         self.print_thread = threading.Thread(target=self._print,
                                              name='print thread',
-                                             kwargs={"resuming": resuming})
+                                             kwargs={"resuming": False})
         self.print_thread.start()
         return True
 
-    def cancelprint(self):
+    def cancel_print(self):
         self.pause()
         self.paused = False
-        self.mainqueue = None
+        self.main_queue = None
         self.clear_to_send = True
-
-    # run a simple script if it exists, no multithreading
-    def runSmallScript(self, filename):
-        if not filename: return
-        try:
-            with open(filename) as f:
-                for i in f:
-                    l = i.replace("\n", "")
-                    l = l.partition(';')[0]  # remove comments
-                    self.send_now(l)
-        except:
-            pass
 
     def pause(self):
         """Pauses the print, saving the current position.
         """
-        if not self.printing: return False
+        if not self.printing:
+            return False
         self.paused = True
         self.printing = False
 
@@ -285,40 +276,41 @@ class PrintCore(object):
         if not threading.current_thread() is self.print_thread:
             try:
                 self.print_thread.join()
-            except:
-                self.logError(traceback.format_exc())
+            except BaseException:
+                self.log_error(traceback.format_exc())
 
         self.print_thread = None
 
         # saves the status
-        self.pauseX = self.analyzer.abs_x
-        self.pauseY = self.analyzer.abs_y
-        self.pauseZ = self.analyzer.abs_z
-        self.pauseE = self.analyzer.abs_e
-        self.pauseF = self.analyzer.current_f
-        self.pauseRelative = self.analyzer.relative
-        self.pauseRelativeE = self.analyzer.relative_e
+        self.pause_x_coordinate = self.analyzer.abs_x
+        self.pause_y_coordinate = self.analyzer.abs_y
+        self.pause_z_coordinate = self.analyzer.abs_z
+        self.pause_e_coordinate = self.analyzer.abs_e
+        self.pause_f_coordinate = self.analyzer.current_f
+        self.relative_pause = self.analyzer.relative
+        self.relative_pause_e = self.analyzer.relative_e
 
     def resume(self):
         """Resumes a paused print."""
-        if not self.paused: return False
+        if not self.paused:
+            return False
         # restores the status
         self.send_now("G90")  # go to absolute coordinates
 
-        xyFeed = '' if self.xy_feedrate is None else ' F' + str(self.xy_feedrate)
-        zFeed = '' if self.z_feedrate is None else ' F' + str(self.z_feedrate)
+        xy_feedrate = '' if self.xy_feedrate is None else ' F' + str(self.xy_feedrate)
+        z_feedrate = '' if self.z_feedrate is None else ' F' + str(self.z_feedrate)
 
-        self.send_now("G1 X%s Y%s%s" % (self.pauseX, self.pauseY, xyFeed))
-        self.send_now("G1 Z" + str(self.pauseZ) + zFeed)
-        self.send_now("G92 E" + str(self.pauseE))
+        self.send_now("G1 X%s Y%s%s" % (self.pause_x_coordinate, self.pause_y_coordinate, xy_feedrate))
+        self.send_now("G1 Z" + str(self.pause_z_coordinate) + z_feedrate)
+        self.send_now("G92 E" + str(self.pause_e_coordinate))
 
         # go back to relative if needed
-        if self.pauseRelative:
+        if self.relative_pause:
             self.send_now("G91")
-        if self.pauseRelativeE:
+        if self.relative_pause_e:
             self.send_now('M83')
         # reset old feed rate
-        self.send_now("G1 F" + str(self.pauseF))
+        self.send_now("G1 F" + str(self.pause_f_coordinate))
 
         self.paused = False
         self.printing = True
@@ -327,50 +319,47 @@ class PrintCore(object):
                                              kwargs={"resuming": True})
         self.print_thread.start()
 
-    def send(self, command, wait=0):
-        """Adds a command to the checksummed main command queue if printing, or
-        sends the command immediately if not printing"""
+    def send(self, command):
+        """Adds a command to the main command queue if printing, or sends the command immediately if not printing"""
 
         if self.online:
             if self.printing:
-                self.mainqueue.append(command)
+                self.main_queue.append(command)
             else:
-                self.priqueue.put_nowait(command)
+                self.priority_queue.put_nowait(command)
         else:
-            self.logError(_("Not connected to printer."))
+            self.log_error(_("Not connected to printer."))
 
-    def send_now(self, command, wait=0):
-        """Sends a command to the printer ahead of the command queue, without a
-        checksum"""
+    def send_now(self, command):
+        """Sends a command to the printer ahead of the command queue"""
         if self.online:
-            self.priqueue.put_nowait(command)
+            self.priority_queue.put_nowait(command)
         else:
-            self.logError(_("Not connected to printer."))
+            self.log_error(_("Not connected to printer."))
 
     def _print(self, resuming=False):
         self._stop_sender()
         try:
             self._event_proxy.on_start(resuming)
             while self.printing and self._connection is not None and self.online:
-                self._sendnext()
-            self.sentlines = {}
+                self._send_next()
+            self.sent_lines = {}
             self.log.clear()
             self.sent = []
             self._event_proxy.on_end()
-        except:
-            self.logError(_("Print thread died due to the following error:") +
-                          "\n" + traceback.format_exc())
+        except BaseException:
+            self.log_error(_("Print thread died due to the following error:") +
+                           "\n" + traceback.format_exc())
         finally:
             self.print_thread = None
             self._start_sender()
 
     def process_host_command(self, command):
-        """only ;@pause command is implemented as a host command in printcore, but hosts are free to reimplement this method"""
         command = command.lstrip()
         if command.startswith(";@pause"):
             self.pause()
 
-    def _sendnext(self):
+    def _send_next(self):
         if self._connection is None:
             return
         while self._connection is not None and self.printing and not self.clear_to_send:
@@ -381,48 +370,48 @@ class PrintCore(object):
         if not (self.printing and self._connection is not None and self.online):
             self.clear_to_send = True
             return
-        if self.resendfrom < self.lineno and self.resendfrom > -1:
-            self._send(self.sentlines[self.resendfrom], self.resendfrom, False)
-            self.resendfrom += 1
+        if self.lineno > self.resend_from > -1:
+            self._send(self.sent_lines[self.resend_from], self.resend_from, False)
+            self.resend_from += 1
             return
-        self.resendfrom = -1
-        if not self.priqueue.empty():
-            self._send(self.priqueue.get_nowait())
-            self.priqueue.task_done()
+        self.resend_from = -1
+        if not self.priority_queue.empty():
+            self._send(self.priority_queue.get_nowait())
+            self.priority_queue.task_done()
             return
-        if self.printing and self.mainqueue.has_index(self.queueindex):
-            (layer, line) = self.mainqueue.idxs(self.queueindex)
-            gline = self.mainqueue.all_layers[layer][line]
-            if self.queueindex > 0:
-                (prev_layer, prev_line) = self.mainqueue.idxs(self.queueindex - 1)
+        if self.printing and self.main_queue.has_index(self.main_queue_index):
+            (layer, line) = self.main_queue.idxs(self.main_queue_index)
+            gcode_line = self.main_queue.all_layers[layer][line]
+            if self.main_queue_index > 0:
+                (prev_layer, prev_line) = self.main_queue.idxs(self.main_queue_index - 1)
                 if prev_layer != layer:
                     self._event_proxy.on_layer_change(layer)
-            self._event_proxy.on_pre_print_send(gline, self.queueindex, self.mainqueue)
-            if gline is None:
-                self.queueindex += 1
+            self._event_proxy.on_pre_print_send(gcode_line, self.main_queue_index, self.main_queue)
+            if gcode_line is None:
+                self.main_queue_index += 1
                 self.clear_to_send = True
                 return
-            tline = gline.raw
-            if tline.lstrip().startswith(";@"):  # check for host command
-                self.process_host_command(tline)
-                self.queueindex += 1
+            raw_gcode_line = gcode_line.raw
+            if raw_gcode_line.lstrip().startswith(";@"):  # check for host command
+                self.process_host_command(raw_gcode_line)
+                self.main_queue_index += 1
                 self.clear_to_send = True
                 return
 
             # Strip comments
-            tline = gcoder.gcode_strip_comment_exp.sub("", tline).strip()
-            if tline:
-                self._send(tline, self.lineno, True)
+            raw_gcode_line = gcoder.gcode_strip_comment_exp.sub("", raw_gcode_line).strip()
+            if raw_gcode_line:
+                self._send(raw_gcode_line, self.lineno, True)
                 self.lineno += 1
-                self._event_proxy.on_print_send(gline)
+                self._event_proxy.on_print_send(gcode_line)
             else:
                 self.clear_to_send = True
-            self.queueindex += 1
+            self.main_queue_index += 1
         else:
             self.printing = False
             self.clear_to_send = True
             if not self.paused:
-                self.queueindex = 0
+                self.main_queue_index = 0
                 self.lineno = 0
                 self._send("M110", -1, True)
 
@@ -432,14 +421,14 @@ class PrintCore(object):
             prefix = "N" + str(lineno) + " " + command
             command = prefix + "*" + str(self._checksum(prefix))
             if "M110" not in command:
-                self.sentlines[lineno] = command
+                self.sent_lines[lineno] = command
         if self._connection:
             self.sent.append(command)
             # run the command through the analyzer
             gcode_line = None
             try:
                 gcode_line = self.analyzer.append(command, store=False)
-            except:
+            except BaseException:
                 logging.warning(_("Could not analyze command %s:") % command +
                                 "\n" + traceback.format_exc())
 
