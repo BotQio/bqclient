@@ -1,5 +1,6 @@
 import time
 
+from bqclient.host.drivers.printrun.connection import SerialConnection
 from bqclient.host.drivers.printrun.printcore import PrintCore
 from bqclient.host.drivers.printrun.gcoder import LightGCode
 
@@ -15,7 +16,8 @@ class PrintrunDriver(object):
         self.printcore = PrintCore()
 
     def connect(self):
-        self.printcore.connect(self.serial_port, self.baud_rate)
+        serial_connection = SerialConnection(self.serial_port, self.baud_rate)
+        self.printcore.connect(serial_connection)
 
         while not self.printcore.online:
             print("Printer is not online yet")

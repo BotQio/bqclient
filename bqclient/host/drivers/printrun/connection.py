@@ -134,7 +134,7 @@ class SerialConnection(PrinterConnection):
     def read(self) -> str:
         try:
             line_bytes = self._printer.readline()
-            if line_bytes is b'':
+            if line_bytes is None:
                 raise EndOfFile()
 
             return line_bytes.decode('utf-8')

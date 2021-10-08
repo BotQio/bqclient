@@ -132,7 +132,7 @@ class PrintCore(object):
             # self.logException(ex)  # Need to determine exactly how this works in the calling function
 
     def _listen_can_continue(self):
-        return self._connection is not None and not self.stop_send_thread and self._connection.can_listen
+        return self._connection is not None and not self.stop_read_thread and self._connection.can_listen
 
     def _listen_until_online(self):
         while not self.online and self._listen_can_continue():
