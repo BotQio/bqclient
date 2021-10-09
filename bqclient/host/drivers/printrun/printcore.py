@@ -1,7 +1,7 @@
 # This file is originally from printrun, but has been modified heavily for BotQio.
 # Please see the original repo here: https://github.com/kliment/Printrun
-
-from typing import Optional
+import re
+from typing import Optional, Tuple, List
 
 from bqclient.host.drivers.printrun.connection import PrinterConnection, CannotWriteToPrinter, CannotReadFromPrinter, \
     EndOfFile
@@ -14,7 +14,6 @@ import logging
 import traceback
 from functools import wraps, reduce
 from collections import deque
-from bqclient.host.drivers.printrun import gcoder
 from bqclient.host.drivers.printrun.utils import set_utf8_locale, install_locale
 
 try:
@@ -34,10 +33,15 @@ def locked(f):
     return inner
 
 
+gcode_strip_comment_exp = re.compile("\([^\(\)]*\)|;.*|[/\*].*\n")
+
+
 class PrintCore(object):
+    _known_greetings: Tuple[str] = ('start', 'Grbl ',)
+
     def __init__(self):
         self._connection: Optional[PrinterConnection] = None
-        self.analyzer = gcoder.GCode()
+        # self.analyzer = gcoder.GCode()
         # clear to send, enabled after responses
         # FIXME: should probably be changed to a sliding window approach
         self.clear_to_send = 0
@@ -45,27 +49,27 @@ class PrintCore(object):
         self.online = False
         # is a print currently running, true if printing, false if paused
         self.printing = False
-        self.main_queue = None
+        self.paused = False
+
+        self.log = deque(maxlen=10000)
+
+        self.main_queue: Optional[List[str]] = None
         self.priority_queue = Queue(0)
         self.main_queue_index = 0
-        self.lineno = 0
+        self.line_number = 0
         self.resend_from = -1
-        self.paused = False
         self.sent_lines = {}
-        self.log = deque(maxlen=10000)
-        self.sent = []
         self.write_failures = 0
-        self.greetings = ['start', 'Grbl ']
-        self.wait = 0  # default wait period for send(), send_now()
+
         self.read_thread = None
         self.stop_read_thread = False
         self.send_thread = None
         self.stop_send_thread = False
         self.print_thread = None
-        self.readline_buf = []
-        self.selector = None
+
         self._event_proxy = ProxyEventHandler([])
         self._event_proxy.on_init()
+
         self.xy_feedrate = None
         self.z_feedrate = None
 
@@ -160,7 +164,7 @@ class PrintCore(object):
                         break
                 else:
                     empty_lines = 0
-                if line.startswith(tuple(self.greetings)) \
+                if line.startswith(self._known_greetings) \
                         or line.startswith('ok') or "T:" in line:
                     self.online = True
                     self._event_proxy.on_online()
@@ -181,7 +185,7 @@ class PrintCore(object):
 
             if line.startswith('DEBUG_'):
                 continue
-            if line.startswith(tuple(self.greetings)) or line.startswith('ok'):
+            if line.startswith(self._known_greetings) or line.startswith('ok'):
                 self.clear_to_send = True
             if line.startswith('ok') and "T:" in line:
                 self._event_proxy.on_temp(line)
@@ -232,7 +236,7 @@ class PrintCore(object):
     def _checksum(command):
         return reduce(lambda x, y: x ^ y, map(ord, command))
 
-    def start_print(self, gcode):
+    def start_print(self, gcode: List[str]):
         """Start a print, gcode is an array of gcode commands.
         returns True on success, False if already printing.
         The print queue will be replaced with the contents of the data array,
@@ -244,9 +248,9 @@ class PrintCore(object):
         self.main_queue_index = 0
         self.main_queue = gcode
         self.printing = True
-        self.lineno = 0
+        self.line_number = 0
         self.resend_from = -1
-        if not gcode or not gcode.lines:
+        if not gcode:
             return True
 
         self.clear_to_send = False
@@ -258,66 +262,67 @@ class PrintCore(object):
         self.print_thread.start()
         return True
 
-    def cancel_print(self):
-        self.pause()
-        self.paused = False
-        self.main_queue = None
-        self.clear_to_send = True
-
-    def pause(self):
-        """Pauses the print, saving the current position.
-        """
-        if not self.printing:
-            return False
-        self.paused = True
-        self.printing = False
-
-        # ';@pause' in the gcode file calls pause from the print thread
-        if not threading.current_thread() is self.print_thread:
-            try:
-                self.print_thread.join()
-            except BaseException:
-                self.log_error(traceback.format_exc())
-
-        self.print_thread = None
-
-        # saves the status
-        self.pause_x_coordinate = self.analyzer.abs_x
-        self.pause_y_coordinate = self.analyzer.abs_y
-        self.pause_z_coordinate = self.analyzer.abs_z
-        self.pause_e_coordinate = self.analyzer.abs_e
-        self.pause_f_coordinate = self.analyzer.current_f
-        self.relative_pause = self.analyzer.relative
-        self.relative_pause_e = self.analyzer.relative_e
-
-    def resume(self):
-        """Resumes a paused print."""
-        if not self.paused:
-            return False
-        # restores the status
-        self.send_now("G90")  # go to absolute coordinates
-
-        xy_feedrate = '' if self.xy_feedrate is None else ' F' + str(self.xy_feedrate)
-        z_feedrate = '' if self.z_feedrate is None else ' F' + str(self.z_feedrate)
-
-        self.send_now("G1 X%s Y%s%s" % (self.pause_x_coordinate, self.pause_y_coordinate, xy_feedrate))
-        self.send_now("G1 Z" + str(self.pause_z_coordinate) + z_feedrate)
-        self.send_now("G92 E" + str(self.pause_e_coordinate))
-
-        # go back to relative if needed
-        if self.relative_pause:
-            self.send_now("G91")
-        if self.relative_pause_e:
-            self.send_now('M83')
-        # reset old feed rate
-        self.send_now("G1 F" + str(self.pause_f_coordinate))
-
-        self.paused = False
-        self.printing = True
-        self.print_thread = threading.Thread(target=self._print,
-                                             name='print thread',
-                                             kwargs={"resuming": True})
-        self.print_thread.start()
+    # TODO Re-enable more detailed print control
+    # def cancel_print(self):
+    #     self.pause()
+    #     self.paused = False
+    #     self.main_queue = None
+    #     self.clear_to_send = True
+    #
+    # def pause(self):
+    #     """Pauses the print, saving the current position.
+    #     """
+    #     if not self.printing:
+    #         return False
+    #     self.paused = True
+    #     self.printing = False
+    #
+    #     # ';@pause' in the gcode file calls pause from the print thread
+    #     if not threading.current_thread() is self.print_thread:
+    #         try:
+    #             self.print_thread.join()
+    #         except BaseException:
+    #             self.log_error(traceback.format_exc())
+    #
+    #     self.print_thread = None
+    #
+    #     # saves the status
+    #     self.pause_x_coordinate = self.analyzer.abs_x
+    #     self.pause_y_coordinate = self.analyzer.abs_y
+    #     self.pause_z_coordinate = self.analyzer.abs_z
+    #     self.pause_e_coordinate = self.analyzer.abs_e
+    #     self.pause_f_coordinate = self.analyzer.current_f
+    #     self.relative_pause = self.analyzer.relative
+    #     self.relative_pause_e = self.analyzer.relative_e
+    #
+    # def resume(self):
+    #     """Resumes a paused print."""
+    #     if not self.paused:
+    #         return False
+    #     # restores the status
+    #     self.send_now("G90")  # go to absolute coordinates
+    #
+    #     xy_feedrate = '' if self.xy_feedrate is None else ' F' + str(self.xy_feedrate)
+    #     z_feedrate = '' if self.z_feedrate is None else ' F' + str(self.z_feedrate)
+    #
+    #     self.send_now("G1 X%s Y%s%s" % (self.pause_x_coordinate, self.pause_y_coordinate, xy_feedrate))
+    #     self.send_now("G1 Z" + str(self.pause_z_coordinate) + z_feedrate)
+    #     self.send_now("G92 E" + str(self.pause_e_coordinate))
+    #
+    #     # go back to relative if needed
+    #     if self.relative_pause:
+    #         self.send_now("G91")
+    #     if self.relative_pause_e:
+    #         self.send_now('M83')
+    #     # reset old feed rate
+    #     self.send_now("G1 F" + str(self.pause_f_coordinate))
+    #
+    #     self.paused = False
+    #     self.printing = True
+    #     self.print_thread = threading.Thread(target=self._print,
+    #                                          name='print thread',
+    #                                          kwargs={"resuming": True})
+    #     self.print_thread.start()
 
     def send(self, command):
         """Adds a command to the main command queue if printing, or sends the command immediately if not printing"""
@@ -356,8 +361,8 @@ class PrintCore(object):
 
     def process_host_command(self, command):
         command = command.lstrip()
-        if command.startswith(";@pause"):
-            self.pause()
+        # if command.startswith(";@pause"):
+        #     self.pause()
 
     def _send_next(self):
         if self._connection is None:
@@ -370,7 +375,7 @@ class PrintCore(object):
         if not (self.printing and self._connection is not None and self.online):
             self.clear_to_send = True
             return
-        if self.lineno > self.resend_from > -1:
+        if self.line_number > self.resend_from > -1:
             self._send(self.sent_lines[self.resend_from], self.resend_from, False)
             self.resend_from += 1
             return
@@ -379,19 +384,18 @@ class PrintCore(object):
             self._send(self.priority_queue.get_nowait())
             self.priority_queue.task_done()
             return
-        if self.printing and self.main_queue.has_index(self.main_queue_index):
-            (layer, line) = self.main_queue.idxs(self.main_queue_index)
-            gcode_line = self.main_queue.all_layers[layer][line]
-            if self.main_queue_index > 0:
-                (prev_layer, prev_line) = self.main_queue.idxs(self.main_queue_index - 1)
-                if prev_layer != layer:
-                    self._event_proxy.on_layer_change(layer)
-            self._event_proxy.on_pre_print_send(gcode_line, self.main_queue_index, self.main_queue)
-            if gcode_line is None:
+        if self.printing and 0 <= self.main_queue_index < len(self.main_queue):
+            raw_gcode_line = self.main_queue[self.main_queue_index]
+            # if self.main_queue_index > 0:
+            #     (prev_layer, prev_line) = self.main_queue.idxs(self.main_queue_index - 1)
+            #     if prev_layer != layer:
+            #         self._event_proxy.on_layer_change(layer)
+            # self._event_proxy.on_pre_print_send(gcode_line, self.main_queue_index, self.main_queue)
+            if raw_gcode_line is None:
                 self.main_queue_index += 1
                 self.clear_to_send = True
                 return
-            raw_gcode_line = gcode_line.raw
+
             if raw_gcode_line.lstrip().startswith(";@"):  # check for host command
                 self.process_host_command(raw_gcode_line)
                 self.main_queue_index += 1
@@ -399,11 +403,11 @@ class PrintCore(object):
                 return
 
             # Strip comments
-            raw_gcode_line = gcoder.gcode_strip_comment_exp.sub("", raw_gcode_line).strip()
+            raw_gcode_line = gcode_strip_comment_exp.sub("", raw_gcode_line).strip()
             if raw_gcode_line:
-                self._send(raw_gcode_line, self.lineno, True)
-                self.lineno += 1
-                self._event_proxy.on_print_send(gcode_line)
+                self._send(raw_gcode_line, self.line_number, True)
+                self.line_number += 1
+                # self._event_proxy.on_print_send(gcode_line)
             else:
                 self.clear_to_send = True
             self.main_queue_index += 1
@@ -412,7 +416,7 @@ class PrintCore(object):
             self.clear_to_send = True
             if not self.paused:
                 self.main_queue_index = 0
-                self.lineno = 0
+                self.line_number = 0
                 self._send("M110", -1, True)
 
     def _send(self, command, lineno=0, calculate_checksum=False):
@@ -423,14 +427,13 @@ class PrintCore(object):
             if "M110" not in command:
                 self.sent_lines[lineno] = command
         if self._connection:
-            self.sent.append(command)
             # run the command through the analyzer
             gcode_line = None
-            try:
-                gcode_line = self.analyzer.append(command, store=False)
-            except BaseException:
-                logging.warning(_("Could not analyze command %s:") % command +
-                                "\n" + traceback.format_exc())
+            # try:
+            #     gcode_line = self.analyzer.append(command, store=False)
+            # except BaseException:
+            #     logging.warning(_("Could not analyze command %s:") % command +
+            #                     "\n" + traceback.format_exc())
 
             self._event_proxy.on_send(command, gcode_line)
             try:

@@ -2,7 +2,6 @@ import time
 
 from bqclient.host.drivers.printrun.connection import SerialConnection
 from bqclient.host.drivers.printrun.printcore import PrintCore
-from bqclient.host.drivers.printrun.gcoder import LightGCode
 
 
 class PrintrunDriver(object):
@@ -34,8 +33,6 @@ class PrintrunDriver(object):
 
         with open(filename, 'rb') as fh:
             gcode = [i.strip().decode("utf-8") for i in fh.readlines()]
-
-        gcode = LightGCode(gcode)
 
         self.printcore.start_print(gcode)
 
