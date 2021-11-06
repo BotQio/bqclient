@@ -1,5 +1,6 @@
 import abc
 import errno
+import logging
 import os
 import platform
 import select
@@ -82,6 +83,16 @@ class SerialConnection(PrinterConnection):
         self._baud: int = baud
         self._printer: Optional[Serial] = None
 
+        self._logger = logging.getLogger('SerialConnection')
+        self._logger.setLevel(level=logging.DEBUG)
+
+        # create formatter and add it to the handlers
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh = logging.FileHandler('serial.log')
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(formatter)
+        self._logger.addHandler(fh)
+
     def _set_hup(self, should_disable: bool):
         if platform.system() == "Linux":
             if should_disable:
@@ -90,6 +101,7 @@ class SerialConnection(PrinterConnection):
                 os.system(f"stty -F {self._port} hup")
 
     def connect(self):
+        self._logger.info("Connecting!")
         try:
             self._set_hup(True)
 
@@ -113,6 +125,9 @@ class SerialConnection(PrinterConnection):
             raise ConnectFailed(message) from ex
 
     def disconnect(self):
+        if self._printer is None:
+            return
+        self._logger.info("Disconnecting!")
         try:
             self._printer.close()
             self._printer = None
@@ -127,6 +142,7 @@ class SerialConnection(PrinterConnection):
 
     def write(self, command: str):
         try:
+            self._logger.debug(f">>> {command.rstrip()}")
             self._printer.write(command.encode('utf-8'))
         except SerialException as ex:
             raise CannotWriteToPrinter("Serial exception on write") from ex
@@ -137,7 +153,10 @@ class SerialConnection(PrinterConnection):
             if line_bytes is None:
                 raise EndOfFile()
 
-            return line_bytes.decode('utf-8')
+            result = line_bytes.decode('utf-8')
+            if result.rstrip():
+                self._logger.debug(f"<<< {result.rstrip()}")
+            return result
         except UnicodeDecodeError as ex:
             message = f"Got rubbish reply from {self._port} at baudrate {self._baud}"
 
