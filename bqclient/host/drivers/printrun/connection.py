@@ -88,7 +88,7 @@ class SerialConnection(PrinterConnection):
 
         # create formatter and add it to the handlers
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        fh = logging.FileHandler('serial.log')
+        fh = logging.FileHandler('/home/pi/serial.log')
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(formatter)
         self._logger.addHandler(fh)
