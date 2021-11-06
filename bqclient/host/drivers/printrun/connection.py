@@ -264,7 +264,8 @@ class TcpConnection(PrinterConnection):
         chunk_size = 256
 
         while True:
-            if line := self._readline_buf():
+            line = self._readline_buf()
+            if line:
                 return line
 
             if self._eof:
