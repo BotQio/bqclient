@@ -129,6 +129,9 @@ class BotWorker(object):
             bot_error_command(self.bot.id, 'Bot startup failure with job in working state')
             self.bot.status = "error"
 
+            if self.bot.current_job is not None:
+                self.bot.current_job.status = 'failed'
+
         self._handle_driver()
         self._handle_job_available()
         self._handle_job_assignment()
