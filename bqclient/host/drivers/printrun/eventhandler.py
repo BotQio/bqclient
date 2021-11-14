@@ -1,5 +1,6 @@
 # This file is originally from printrun, but has been modified heavily for BotQio.
 # Please see the original repo here: https://github.com/kliment/Printrun
+import inspect
 import logging
 import traceback
 from typing import Iterable
@@ -124,9 +125,15 @@ class ProxyEventHandler(PrinterEventHandler):
         self._event_handlers.append(handler)
 
     def _call_function(self, f, *args):
+        name = f.__name__
         for handler in self._event_handlers:
             try:
-                f(handler, *args)
+                if not hasattr(handler, name):
+                    continue
+
+                attr = getattr(handler, name)
+                if inspect.ismethod(attr):
+                    attr(*args)
             except BaseException:
                 logging.error(traceback.format_exc())
 
