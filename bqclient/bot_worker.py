@@ -123,6 +123,7 @@ class BotWorker(object):
             self.log.error("Unknown other exception", exc_info=True)
 
     def _run(self):
+        self.log.info(f"Bot started up with status: {self.bot.status}")
         if self.bot.status == "working":
             bot_error_command: BotError = self.resolver(BotError)
             bot_error_command(1, 'Bot startup failure with job in working state')
