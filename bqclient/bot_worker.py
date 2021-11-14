@@ -137,7 +137,7 @@ class BotWorker(object):
         self._handle_job_assignment()
 
         while not self._worker_should_be_stopped.is_set():
-            if self._current_job is not None:
+            if self._current_job is not None and self._current_job.status == 'assigned':
                 self.log.info(f"Starting on job {self._current_job.id}")
                 url = self._current_job.file_url
 
