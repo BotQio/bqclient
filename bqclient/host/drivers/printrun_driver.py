@@ -1,11 +1,14 @@
 import time
 
 from bqclient.host.drivers.printrun.connection import SerialConnection
+from bqclient.host.drivers.printrun.handlers.log_handler import LogHandler
 from bqclient.host.drivers.printrun.printcore import PrintCore
 
 
 class PrintrunDriver(object):
-    def __init__(self, config):
+    def __init__(self,
+                 config,
+                 log_handler: LogHandler):
         self.serial_port = config["connection"]["port"]
         self.baud_rate = None
 
@@ -13,6 +16,7 @@ class PrintrunDriver(object):
             self.baud_rate = config["connection"]["baud"]
 
         self.printcore = PrintCore()
+        self.printcore.add_event_handler(log_handler)
 
     def connect(self):
         serial_connection = SerialConnection(self.serial_port, self.baud_rate)

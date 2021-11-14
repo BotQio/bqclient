@@ -164,6 +164,9 @@ class PrintCore(object):
                         break
                 else:
                     empty_lines = 0
+
+                self._event_proxy.on_receive(line)
+
                 if line.startswith(self._known_greetings) \
                         or line.startswith('ok') or "T:" in line:
                     self.online = True
@@ -182,6 +185,9 @@ class PrintCore(object):
                 self.stop_send_thread = True
                 logging.debug('_readline() hit EOF')
                 break
+
+            if line.rstrip():
+                self._event_proxy.on_receive(line.rstrip())
 
             if line.startswith('DEBUG_'):
                 continue
