@@ -325,3 +325,99 @@ class TestIocResolver(object):
         second = resolver(SingletonClass)
 
         assert first is not second
+
+    def test_on_bind_calls_callback_on_auto_bind(self, resolver):
+        called = False
+
+        def callback():
+            nonlocal called
+            called = True
+
+        resolver.on_bind(NoArgumentFakeClass, callback)
+
+        assert not called
+
+        # Auto bind
+        resolver(NoArgumentFakeClass)
+
+        assert called
+
+    def test_on_bind_calls_callback_in_correct_order(self, resolver):
+        call_result = 0
+
+        def callback():
+            nonlocal call_result
+            call_result += 1
+
+        class NeedsResolving(object):
+            def __init__(self, _: NoArgumentFakeClass):
+                nonlocal call_result
+                call_result *= 2
+
+        resolver.on_bind(NoArgumentFakeClass, callback)
+
+        assert call_result == 0
+
+        resolver(NeedsResolving)
+
+        # Correct order: (0 + 1) * 2 == 2
+        # Incorrect order: (0 * 2) + 1 == 1
+        assert call_result == 2
+
+    def test_on_bind_calls_callback_with_manual_bind(self, resolver):
+        call_count = 0
+
+        def callback():
+            nonlocal call_count
+            call_count += 1
+
+        resolver.on_bind(NoArgumentFakeClass, callback)
+
+        assert call_count == 0
+
+        resolver.bind(NoArgumentFakeClass)
+
+        assert call_count == 1
+
+        resolver(NoArgumentFakeClass)
+
+        assert call_count == 1
+
+    def test_on_bind_calls_callback_with_instance_bind(self, resolver):
+        call_count = 0
+
+        def callback():
+            nonlocal call_count
+            call_count += 1
+
+        resolver.on_bind(NoArgumentFakeClass, callback)
+
+        assert call_count == 0
+
+        instance = NoArgumentFakeClass()
+        resolver.instance(instance)
+
+        assert call_count == 1
+
+        resolver(NoArgumentFakeClass)
+
+        assert call_count == 1
+
+    def test_on_bind_calls_callback_with_singleton_bind(self, resolver):
+        call_count = 0
+
+        def callback():
+            nonlocal call_count
+            call_count += 1
+
+        resolver.on_bind(NoArgumentFakeClass, callback)
+
+        assert call_count == 0
+
+        resolver.singleton(NoArgumentFakeClass)
+
+        assert call_count == 1
+
+        resolver(NoArgumentFakeClass)
+
+        assert call_count == 1

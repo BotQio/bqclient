@@ -1,4 +1,5 @@
 import inspect
+from typing import Dict, Callable
 
 
 class FailureToBindException(Exception):
@@ -17,6 +18,7 @@ class Resolver(object):
 
     def __init__(self):
         self._bindings = {}
+        self._on_bind_callbacks = {}
 
         self.instance(self)
 
@@ -59,6 +61,13 @@ class Resolver(object):
 
         return cls()
 
+    def _bind_function(self, cls, instantiation_function: Callable):
+        self._bindings[cls] = instantiation_function
+
+        if cls in self._on_bind_callbacks:
+            for callback in self._on_bind_callbacks[cls]:
+                callback()
+
     def instance(self, cls, instance=None):
         if instance is None:
             if hasattr(cls, '__class__'):
@@ -69,7 +78,7 @@ class Resolver(object):
         def _internal(*_, **__):
             return instance
 
-        self._bindings[cls] = _internal
+        self._bind_function(cls, _internal)
 
     def bind(self, cls, bind_function=None):
         if bind_function is not None:
@@ -78,7 +87,7 @@ class Resolver(object):
             def _internal(*args, **kwargs):
                 return self._make(cls, *args, **kwargs)
 
-        self._bindings[cls] = _internal
+        self._bind_function(cls, _internal)
 
     @classmethod
     def _singleton_annotation(cls, singleton_cls):
@@ -98,7 +107,13 @@ class Resolver(object):
 
             return _internal.instance
 
-        self._bindings[cls] = _internal
+        self._bind_function(cls, _internal)
+
+    def on_bind(self, cls, callback: Callable[[], None]):
+        if not inspect.isclass(cls):
+            return
+
+        self._on_bind_callbacks.setdefault(cls, []).append(callback)
 
     def clear(self, cls=None):
         if cls is None:
@@ -107,6 +122,8 @@ class Resolver(object):
 
         elif cls in self._bindings:
             del self._bindings[cls]
+
+        self._on_bind_callbacks = {}
 
     @classmethod
     def get(cls):
