@@ -7,16 +7,19 @@ from bqclient.host.framework.events import bind_events
 from bqclient.host.framework.ioc import Resolver
 from bqclient.host.managers.bots_manager import BotsManager
 from bqclient.host.managers.available_connections_manager import AvailableConnectionsManager
+from bqclient.host.managers.websocket_manager import WebsocketManager
 
 
 @bind_events
 class Host(object):
     def __init__(self,
                  resolver: Resolver,
+                 websocket_manager: WebsocketManager,
                  bots_manager: BotsManager,
                  available_connections_manager: AvailableConnectionsManager,
                  host_logging: HostLogging):
         self.resolver = resolver
+        self.websocket_manager = websocket_manager
         self.bots_manager = bots_manager
         self.available_connections_manager = available_connections_manager
         self.host_logger = host_logging.get_logger('Host')
@@ -27,6 +30,8 @@ class Host(object):
         self.host_logger.info("Starting host run method")
         HostEvents.Startup().fire()
 
+        self.host_logger.info("Starting Websocket Manager")
+        self.websocket_manager.start()
         self.host_logger.info("Starting Bots Manager")
         self.bots_manager.start()
         self.host_logger.info("Starting Available Connections Manager")

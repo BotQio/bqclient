@@ -6,12 +6,17 @@ from bqclient.host import Host
 from bqclient.host.events import HostEvents
 from bqclient.host.managers.bots_manager import BotsManager
 from bqclient.host.managers.available_connections_manager import AvailableConnectionsManager
+from bqclient.host.managers.websocket_manager import WebsocketManager
 
 
 class TestHost(object):
     def test_host(self, resolver, fakes_events):
         fakes_events.fake(HostEvents.Startup)
         fakes_events.fake(HostEvents.Shutdown)
+
+        websocket_manager = Mock(WebsocketManager)
+        websocket_manager.start = Mock()
+        resolver.instance(WebsocketManager, websocket_manager)
 
         bots_manager = Mock(BotsManager)
         bots_manager.start = Mock()
@@ -30,6 +35,7 @@ class TestHost(object):
 
         assert fakes_events.fired(HostEvents.Startup).once()
 
+        websocket_manager.start.assert_called_once()
         bots_manager.start.assert_called_once()
         available_connections_manager.start.assert_called_once()
 
