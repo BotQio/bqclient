@@ -1,15 +1,17 @@
 from bqclient.host.api.rest import RestApi
 from bqclient.host.api.socket import WebSocketApi
+from bqclient.host.framework.ioc import singleton
 
 
 class ErrorResponse(Exception):
     def __init__(self, code, message):
         self.code = code
         self.message = message
-        
+
         super(ErrorResponse, self).__init__(f"Error {code}: {message}")
 
 
+@singleton
 class BotQioApi(object):
     def __init__(self,
                  rest_api: RestApi,
@@ -32,6 +34,8 @@ class BotQioApi(object):
             try:
                 if response.ok:
                     return response_json["data"]
+                elif "code" not in response_json or "message" not in response_json:
+                    raise Exception(f"Unknown error from BotQio API: {response.content}")
                 else:
                     raise ErrorResponse(
                         code=response_json["code"],

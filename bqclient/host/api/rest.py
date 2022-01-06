@@ -3,12 +3,14 @@ from urllib.parse import urljoin
 import requests
 
 from bqclient.host.api.server import Server
+from bqclient.host.framework.ioc import singleton
 
 
 class AccessTokenNotFound(Exception):
     pass
 
 
+@singleton
 class RestApi(object):
     def __init__(self,
                  server: Server):

@@ -52,6 +52,7 @@ setup(name="bqclient",
           'deepdiff',
           'requests',
           'pyserial',
+          'pysherplus',
           'sentry-sdk==0.10.2',
           'zeroconf'
       ],
