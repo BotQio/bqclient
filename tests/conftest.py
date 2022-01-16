@@ -1,14 +1,17 @@
 import os
 import tempfile
+from typing import List, Dict, Any
 from unittest.mock import MagicMock, Mock, PropertyMock
 
 import pytest
 import requests
 from appdirs import AppDirs
+from pysherplus.channel import EventCallback
 from requests import Response
 
 from bqclient.host.framework.events import Event, EventManager
 from bqclient.host.framework.ioc import Resolver
+from bqclient.host.api.channels.host_channel import HostSocketChannel as BaseHostChannel
 
 
 @pytest.fixture
@@ -144,3 +147,47 @@ def fake_responses():
             return response
 
     return FakeResponses()
+
+
+@pytest.fixture
+def host_channel(resolver):
+    # TODO Somehow make this not reimplement the entire API surface of HostSocketChannel
+    class HostSocketChannel(object):
+        def __init__(self):
+            self._is_subscribed = False
+            self._listeners: Dict[str, List[EventCallback]] = {}
+
+        @property
+        def subscribed(self) -> bool:
+            return self._is_subscribed
+
+        @subscribed.setter
+        def subscribed(self, value: bool):
+            self._is_subscribed = value
+
+        def register(self, event_name: str, callback: EventCallback):
+            self._listeners.setdefault(event_name, []).append(callback)
+
+        def unregister(self, event_name: str, callback: EventCallback):
+            listeners = self._listeners.setdefault(event_name, [])
+            if callback in listeners:
+                listeners.remove(callback)
+
+        def event(self, event_name: str, data: Any):
+            app_events_prefix = 'App\\Events\\'
+            event_name_sans_prefix = event_name.removeprefix(app_events_prefix)
+
+            # This allows subscribers to 'App\Events\Name' and 'Name'.
+            # It will call the callback with their preferred format.
+            for name in {event_name, event_name_sans_prefix}:
+                if name not in self._listeners:
+                    continue
+
+                listener: EventCallback
+                for listener in self._listeners[name]:
+                    listener(name, data)
+
+    channel = HostSocketChannel()
+    resolver.instance(BaseHostChannel, channel)
+
+    return channel

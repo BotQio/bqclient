@@ -5,14 +5,14 @@ from pysherplus.pusher import Pusher
 from bqclient.host.framework.ioc import singleton, Resolver
 
 
-@singleton
+# @singleton
 class WebSocketApi(object):
     def __init__(self,
                  resolver: Resolver):
         self._resolver = resolver
         self._client: Optional[Pusher] = None
 
-        resolver.on_bind(Pusher, self._on_pusher_available)
+        #resolver.on_bind(Pusher, self._on_pusher_available)
 
     def _on_pusher_available(self):
         self._client = self._resolver(Pusher)

@@ -8,19 +8,16 @@ from bqclient.host.managers.websocket_manager import WebsocketManager, RestApiAu
 
 
 class TestWebsocketManager(object):
-    ws_url = 'http://example.com/ws/app/BotQio/key'
-    auth_url = 'http://example.com/ws/app/BotQio/key'
+    ws_url = 'ws://example.com/ws/app/BotQio/key'
+    auth_url = 'http://example.com/broadcasting/auth'
 
     def test_websocket_manager_calls_info_command_to_setup_websocket(self, resolver):
         info = MagicMock(Info)
         resolver.instance(info)
         info.return_value = {
-            'status': 'success',
-            'data': {
-                'websocket': {
-                    'url': self.ws_url,
-                    'auth': self.auth_url,
-                }
+            'websocket': {
+                'url': self.ws_url,
+                'auth': self.auth_url,
             }
         }
 

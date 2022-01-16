@@ -81,6 +81,7 @@ class EventManager(object):
         self._listeners[event_class].append(wrapper)
 
     def fire(self, event):
+        print(event)
         if event.__class__ in self._listeners:
             for listener in self._listeners[event.__class__]:
                 listener(event)

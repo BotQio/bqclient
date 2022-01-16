@@ -49,8 +49,8 @@ class WebsocketManager(object):
         info: Info = self._resolver(Info)
 
         info_result = info()
-        ws_url = info_result['data']['websocket']['url']
-        auth_url = info_result['data']['websocket']['url']
+        ws_url = info_result['websocket']['url']
+        auth_url = info_result['websocket']['auth']
 
         rest_api: RestApi = self._resolver(RestApi)
         authenticator = RestApiAuthentication(auth_url, rest_api)

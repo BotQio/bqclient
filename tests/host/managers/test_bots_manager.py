@@ -2,13 +2,14 @@ import json
 from unittest.mock import Mock, MagicMock
 
 from bqclient.host.api.botqio_api import BotQioApi
+from bqclient.host.api.channels.host_channel import HostSocketChannel
 from bqclient.host.events import BotEvents
 from bqclient.host.framework.recurring_task import RecurringTask
 from bqclient.host.managers.bots_manager import BotsManager
 
 
 class TestBotsManager(object):
-    def test_calling_start_kicks_off_the_polling_thread(self, resolver):
+    def test_calling_start_kicks_off_the_polling_thread(self, resolver, host_channel):
         resolver.instance(Mock(BotQioApi))
 
         mock_polling_thread = MagicMock(RecurringTask)
@@ -20,7 +21,7 @@ class TestBotsManager(object):
 
         mock_polling_thread.start.assert_called_once()
 
-    def test_polling_calls_the_right_endpoint(self, resolver, fakes_events):
+    def test_polling_calls_the_right_endpoint(self, resolver, fakes_events, host_channel):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotRemoved)
 
@@ -36,7 +37,7 @@ class TestBotsManager(object):
         assert not fakes_events.fired(BotEvents.BotAdded)
         assert not fakes_events.fired(BotEvents.BotRemoved)
 
-    def test_polling_adds_a_bot_it_has_not_seen_before(self, resolver, fakes_events):
+    def test_polling_adds_a_bot_it_has_not_seen_before(self, resolver, fakes_events, host_channel):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotRemoved)
 
@@ -73,7 +74,7 @@ class TestBotsManager(object):
         assert event.bot.driver == {"type": "dummy"}
         assert event.bot.current_job is None
 
-    def test_decoding_serialized_driver(self, resolver, fakes_events):
+    def test_decoding_serialized_driver(self, resolver, fakes_events, host_channel):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotRemoved)
 
@@ -110,7 +111,7 @@ class TestBotsManager(object):
         assert event.bot.driver == {"type": "dummy"}
         assert event.bot.current_job is None
 
-    def test_polling_adds_a_bot_only_once(self, resolver, fakes_events):
+    def test_polling_adds_a_bot_only_once(self, resolver, fakes_events, host_channel):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotRemoved)
 
@@ -149,7 +150,7 @@ class TestBotsManager(object):
         assert event.bot.driver is None
         assert event.bot.current_job is None
 
-    def test_polling_removes_the_bot(self, resolver, fakes_events):
+    def test_polling_removes_the_bot(self, resolver, fakes_events, host_channel):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotRemoved)
 
@@ -196,7 +197,7 @@ class TestBotsManager(object):
         assert bot_removed_event.bot.driver is None
         assert bot_removed_event.bot.current_job is None
 
-    def test_polling_will_add_the_bot_back(self, resolver, fakes_events):
+    def test_polling_will_add_the_bot_back(self, resolver, fakes_events, host_channel):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotRemoved)
 
@@ -246,7 +247,7 @@ class TestBotsManager(object):
         assert bot_removed_event.bot.driver is None
         assert bot_removed_event.bot.current_job is None
 
-    def test_polling_will_fire_bot_updated_on_update(self, resolver, fakes_events):
+    def test_polling_will_fire_bot_updated_on_update(self, resolver, fakes_events, host_channel):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotUpdated)
 
@@ -303,3 +304,59 @@ class TestBotsManager(object):
         assert bot_updated_event.bot.type == "3d_printer"
         assert bot_updated_event.bot.driver is None
         assert bot_updated_event.bot.current_job is None
+
+    def test_socket_subscribed_does_not_call_get_bots_on_poll(self, resolver, fakes_events, host_channel):
+        fakes_events.fake(BotEvents.BotAdded)
+        fakes_events.fake(BotEvents.BotRemoved)
+
+        api = MagicMock(BotQioApi)
+        resolver.instance(api)
+
+        host_channel.subscribed = True
+
+        bots_manager: BotsManager = resolver(BotsManager)
+        bots_manager.poll()
+
+        api.command.assert_not_called()
+
+        assert not fakes_events.fired(BotEvents.BotAdded)
+        assert not fakes_events.fired(BotEvents.BotRemoved)
+
+    def test_socket_event_bot_updated_fires_bot_added_if_it_has_not_been_seen_before(self, resolver, fakes_events,
+                                                                                     host_channel):
+        fakes_events.fake(BotEvents.BotAdded)
+        fakes_events.fake(BotEvents.BotRemoved)
+
+        host_channel.subscribed = True
+
+        api = MagicMock(BotQioApi)
+        resolver.instance(api)
+
+        # Socket event registration
+        _: BotsManager = resolver(BotsManager)
+
+        host_channel.event('BotUpdated', {
+            "id": 1,
+            "name": "Test bot",
+            "type": "3d_printer",
+            "status": "Offline",
+            "driver": {
+                "type": "dummy"
+            },
+            "job_available": False,
+        })
+
+        api.command.assert_not_called()
+
+        bot_added_event_assertion = fakes_events.fired(BotEvents.BotAdded)
+        assert bot_added_event_assertion.once()
+        assert not fakes_events.fired(BotEvents.BotRemoved)
+
+        event: BotEvents.BotAdded = bot_added_event_assertion.event
+        assert event.bot.id == 1
+        assert event.bot.name == "Test bot"
+        assert event.bot.status == "Offline"
+        assert not event.bot.job_available
+        assert event.bot.type == "3d_printer"
+        assert event.bot.driver == {"type": "dummy"}
+        assert event.bot.current_job is None

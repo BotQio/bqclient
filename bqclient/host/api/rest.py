@@ -10,7 +10,7 @@ class AccessTokenNotFound(Exception):
     pass
 
 
-@singleton
+# @singleton
 class RestApi(object):
     def __init__(self,
                  server: Server):
