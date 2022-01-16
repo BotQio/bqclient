@@ -1,4 +1,7 @@
-from typing import TYPE_CHECKING, TypeVar, Generic, Optional
+import abc
+import json
+from datetime import datetime
+from typing import TYPE_CHECKING, TypeVar, Generic, Optional, Callable, Dict, Any
 
 if TYPE_CHECKING:
     from bqclient.host.api.rest import RestApi
@@ -14,34 +17,55 @@ class DataCarrier(object):
 
 
 T = TypeVar('T')
+U = TypeVar('U')
+
+
+class Transform(Generic[T, U]):
+    @abc.abstractmethod
+    def from_stated(self, value: T) -> U:
+        pass
+
+    @abc.abstractmethod
+    def to_stated(self, value: U) -> T:
+        pass
 
 
 class ReadOnlyValue(Generic[T]):
-    def __init__(self, name: str):
+    def __init__(self,
+                 name: str,
+                 transform: Optional[Transform[T, U]] = None
+                 ):
         self._name = name
+        self._transform: Optional[Transform[T, U]] = transform
+        self._transformed_value = None
 
     def __get__(self, instance, owner):
         # getattr just to avoid the protected member warning
         data: DataCarrier = getattr(instance, '_data')
-        return data.updated_or_data(self._name)
+        value = data.updated_or_data(self._name)
+
+        if self._transform is not None:
+            if self._transformed_value is None:
+                self._transformed_value = self._transform.to_stated(value)
+            value = self._transformed_value
+
+        return value
 
     def __set__(self, instance, value):
         raise AttributeError(f"Attribute \"{self._name}\" is read only")
 
 
-class Value(Generic[T]):
-    def __init__(self, name: str):
-        self._name = name
-
-    def __get__(self, instance, owner):
-        # getattr just to avoid the protected member warning
-        data: DataCarrier = getattr(instance, '_data')
-        return data.updated_or_data(self._name)
+class Value(ReadOnlyValue[T]):
+    def __init__(self,
+                 name: str,
+                 transform: Optional[Transform[T, U]] = None):
+        super().__init__(name, transform)
 
     def __set__(self, instance, value):
         # getattr just to avoid the protected member warning
         data: DataCarrier = getattr(instance, '_data')
         data.updated[self._name] = value
+        self._transformed_value = None
 
 
 class Model(object):
@@ -55,6 +79,29 @@ class Model(object):
         self._data = self._api.bots.fetch(self.id)._data
 
 
+class DateTimeTransform(Transform[datetime, str]):
+    def from_stated(self, value: datetime) -> str:
+        result = value.isoformat()
+        if result.endswith("00:00"):
+            result = result[:-6] + 'Z'
+
+        return result
+
+    def to_stated(self, value: str) -> datetime:
+        if value.endswith('Z'):
+            value = value[:-1] + '+00:00'
+
+        return datetime.fromisoformat(value)
+
+
+class JsonTransform(Transform[Dict[str, Any], str]):
+    def from_stated(self, value: [Dict[str, Any]]) -> str:
+        return json.dumps(value)
+
+    def to_stated(self, value: str) -> [Dict[str, Any]]:
+        return json.loads(value)
+
+
 class Bot(Model):
     creator_id: ReadOnlyValue[str] = ReadOnlyValue('creator_id')
     host_id: Value[str] = Value('host_id')
@@ -65,12 +112,12 @@ class Bot(Model):
     type: ReadOnlyValue[str] = ReadOnlyValue('type')
     status: Value[str] = Value('status')
     error_text: Value[str] = Value('error_text')
-    driver: Value[str] = Value('driver')  # TODO Maybe transform?
+    driver: Value[str] = Value('driver', transform=JsonTransform())
     job_available: ReadOnlyValue[bool] = ReadOnlyValue('job_available')
 
-    # seen_at: ReadOnlyValue[str] = ReadOnlyValue('seen_at')  # TODO Date transform
-    # created_at: ReadOnlyValue[str] = ReadOnlyValue('created_at')  # TODO Date transform
-    # updated_at: ReadOnlyValue[str] = ReadOnlyValue('updated_at')  # TODO Date transform
+    # seen_at: ReadOnlyValue[str] = ReadOnlyValue('seen_at')  # TODO Does this go here on the API side?
+    created_at: ReadOnlyValue[datetime] = ReadOnlyValue('created_at', transform=DateTimeTransform())
+    updated_at: ReadOnlyValue[datetime] = ReadOnlyValue('updated_at', transform=DateTimeTransform())
 
     @property
     def current_job(self) -> Optional['Job']:
@@ -95,8 +142,8 @@ class Job(Model):
     status: Value[str] = Value('status')
     progress: Value[str] = Value('progress')
 
-    # created_at: ReadOnlyValue[str] = ReadOnlyValue('created_at')  # TODO Date transform
-    # updated_at: ReadOnlyValue[str] = ReadOnlyValue('updated_at')  # TODO Date transform
+    created_at: ReadOnlyValue[datetime] = ReadOnlyValue('created_at', transform=DateTimeTransform())
+    updated_at: ReadOnlyValue[datetime] = ReadOnlyValue('updated_at', transform=DateTimeTransform())
 
     @property
     def file(self) -> 'File':
@@ -113,9 +160,10 @@ class File(Model):
     name: Value[str] = Value('name')
     size: ReadOnlyValue[int] = ReadOnlyValue('size')
     type: ReadOnlyValue[str] = ReadOnlyValue('type')
+    download_url: ReadOnlyValue[str] = ReadOnlyValue('download_url')
 
-    # created_at: ReadOnlyValue[str] = ReadOnlyValue('created_at')  # TODO Date transform
-    # updated_at: ReadOnlyValue[str] = ReadOnlyValue('updated_at')  # TODO Date transform
+    created_at: ReadOnlyValue[datetime] = ReadOnlyValue('created_at', transform=DateTimeTransform())
+    updated_at: ReadOnlyValue[datetime] = ReadOnlyValue('updated_at', transform=DateTimeTransform())
 
     @property
     def creator(self) -> 'User':
@@ -125,5 +173,5 @@ class File(Model):
 class User(Model):
     username: ReadOnlyValue['str'] = ReadOnlyValue('username')
 
-    # created_at: ReadOnlyValue[str] = ReadOnlyValue('created_at')  # TODO Date transform
-    # updated_at: ReadOnlyValue[str] = ReadOnlyValue('updated_at')  # TODO Date transform
+    created_at: ReadOnlyValue[datetime] = ReadOnlyValue('created_at', transform=DateTimeTransform())
+    updated_at: ReadOnlyValue[datetime] = ReadOnlyValue('updated_at', transform=DateTimeTransform())
