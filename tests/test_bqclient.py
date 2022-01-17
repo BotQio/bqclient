@@ -5,7 +5,7 @@ import pytest
 from bqclient.bot_worker import BotWorker
 from bqclient.client import BQClient
 from bqclient.host.events import BotEvents
-from bqclient.host.types import Bot, User
+from bqclient.host.models import Bot
 
 
 class TestBQClient(object):
@@ -13,7 +13,7 @@ class TestBQClient(object):
         call_count = 0
 
         def get_bot_worker(bot):
-            if bot.id != 1:
+            if bot.id != "1":
                 pytest.fail("Resolving function did not request the correct bot id")
 
             nonlocal call_count
@@ -29,10 +29,8 @@ class TestBQClient(object):
 
         # Different name than the get_bot_worker parameter to prevent shadowing
         created_bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="Idle",
-            type="3d_printer"
+            api=MagicMock(),
+            data={"id": "1", "name": "Test"}
         )
 
         BotEvents.BotAdded(created_bot).fire()

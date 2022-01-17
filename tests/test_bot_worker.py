@@ -95,6 +95,7 @@ class TestBotWorker(object):
         )
 
         worker: BotWorker = resolver(BotWorker, bot=bot)
+        time.sleep(0.125)  # TODO Fix test instability
 
         assert not fakes_events.fired(JobEvents.JobAssigned)
 
@@ -301,6 +302,7 @@ class TestBotWorker(object):
         )
 
         worker: BotWorker = resolver(BotWorker, bot=bot)
+        time.sleep(0.125)  # TODO Fix test instability
 
         driver_factory.get.assert_called_once_with(driver_config)
         dummy_driver.connect.assert_called_once()
@@ -328,7 +330,7 @@ class TestBotWorker(object):
 
         worker: BotWorker = resolver(BotWorker, bot=bot)
 
-        time.sleep(0.05)
+        time.sleep(0.125)  # TODO Fix test instability
 
         driver_factory.get.assert_called_once_with(driver_config)
         dummy_driver.connect.assert_called_once()
@@ -451,6 +453,7 @@ class TestBotWorker(object):
         )
 
         worker: BotWorker = resolver(BotWorker, bot=bot)
+        time.sleep(0.125)  # TODO Fix test instability
 
         new_bot = Bot(
             id=1,
@@ -461,6 +464,7 @@ class TestBotWorker(object):
         )
 
         BotEvents.BotUpdated(new_bot).fire()
+        time.sleep(0.125)  # TODO Fix test instability
 
         worker.stop()
 
@@ -518,6 +522,7 @@ class TestBotWorker(object):
         )
 
         BotEvents.BotUpdated(new_bot).fire()
+        time.sleep(0.125)  # TODO Fix test instability
 
         worker.stop()
 
@@ -535,7 +540,7 @@ class TestBotWorker(object):
         )
 
         worker: BotWorker = resolver(BotWorker, bot=bot)
-        time.sleep(1)
+        time.sleep(0.125)  # TODO Fix test instability
         worker.stop()
 
         bot_error.assert_called_once_with(bot.id, 'Bot startup failure with job in working state')

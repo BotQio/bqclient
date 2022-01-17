@@ -1,5 +1,5 @@
 from bqclient.host.framework.events import EventBag, Event
-from bqclient.host.types import Bot, Job
+from bqclient.host.models import Bot, Job
 
 
 class JobEvents(EventBag):

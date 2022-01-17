@@ -16,7 +16,7 @@ from bqclient.host.events import JobEvents, BotEvents
 from bqclient.host.framework.events import bind_events
 from bqclient.host.framework.ioc import Resolver
 from bqclient.host.framework.logging import HostLogging
-from bqclient.host.types import Bot, Job
+from bqclient.host.models import Bot, Job
 
 
 @bind_events

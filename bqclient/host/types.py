@@ -1,14 +1,6 @@
 import json
 
 
-class User(object):
-    def __init__(self,
-                 id: int,
-                 username: str):
-        self.id = id
-        self.username = username
-
-
 class HostRequest(object):
     def __init__(self,
                  id: int,
