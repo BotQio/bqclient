@@ -1,347 +1,133 @@
+import threading
 import time
+import uuid
 from unittest.mock import MagicMock, Mock, call
 
-import pytest
-
-from bqclient.bot_worker import BotWorker
-from bqclient.host.api.commands.bot_error import BotError
 from bqclient.host.api.commands.finish_job import FinishJob
-from bqclient.host.api.commands.get_a_job import GetAJob
 from bqclient.host.api.commands.start_job import StartJob
 from bqclient.host.downloader import Downloader
 from bqclient.host.drivers.driver_factory import DriverFactory
 from bqclient.host.drivers.dummy import DummyDriver
-from bqclient.host.drivers.printrun_driver import PrintrunDriver
-from bqclient.host.events import JobEvents, BotEvents
-from bqclient.host.types import Bot, Job
+from bqclient.host.models import Bot, Job, File
+from bqclient.host.workers.bot_worker import DriverUpdatedCommand, RunJobCommand
 
 
 class TestBotWorker(object):
-    def test_bot_worker_without_job_does_not_fire_job_assigned_event(self, resolver, fakes_events):
-        fakes_events.fake(JobEvents.JobAssigned)
+    def test_empty_driver_does_not_connect_automatically(self, bot_worker_harness):
+        bot: Bot = Mock(Bot)
+        bot.driver = None
+        with bot_worker_harness(bot) as _:
+            pass
 
-        driver_factory = MagicMock(DriverFactory)
-        resolver.instance(driver_factory)
-
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="idle",
-            type="3d_printer"
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=bot)
-        worker.stop()
-
-        driver_factory.get.assert_not_called()
-        assert not fakes_events.fired(JobEvents.JobAssigned)
-
-    def test_bot_worker_with_available_job_fires_job_available_event(self, resolver, fakes_events):
-        fakes_events.fake(BotEvents.BotHasJobAvailable)
-
-        driver_factory = MagicMock(DriverFactory)
-        resolver.instance(driver_factory)
-
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="job_assigned",
-            type="3d_printer",
-            job_available=True
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=bot)
-        worker.stop()
-
-        driver_factory.get.assert_not_called()
-        assert fakes_events.fired(BotEvents.BotHasJobAvailable).once()
-
-    def test_bot_worker_with_job_fires_job_assigned_event(self, resolver, fakes_events):
-        fakes_events.fake(JobEvents.JobAssigned)
-
-        driver_factory = MagicMock(DriverFactory)
-        resolver.instance(driver_factory)
-
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="job_assigned",
-            type="3d_printer",
-            current_job=Job(
-                id=2,
-                name="Test Job",
-                status="assigned",
-                file_url="http://foo/bar"
-            )
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=bot)
-        worker.stop()
-
-        driver_factory.get.assert_not_called()
-        assert fakes_events.fired(JobEvents.JobAssigned).once()
-
-    def test_bot_updated_event_fires_job_assigned_event(self, resolver, fakes_events):
-        fakes_events.fake(JobEvents.JobAssigned)
-
-        driver_factory = MagicMock(DriverFactory)
-        resolver.instance(driver_factory)
-
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="job_assigned",
-            type="3d_printer"
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=bot)
-        time.sleep(0.125)  # TODO Fix test instability
-
-        assert not fakes_events.fired(JobEvents.JobAssigned)
-
-        bot.current_job = Job(
-            id=2,
-            name="Test Job",
-            status="assigned",
-            file_url="http://foo/bar"
-        )
-
-        BotEvents.BotUpdated(bot).fire()
-
-        worker.stop()
-
-        driver_factory.get.assert_not_called()
-        assert fakes_events.fired(JobEvents.JobAssigned).once()
-
-    def test_job_assigned_event_with_mismatched_job_id_does_nothing(self, resolver):
-        driver_factory = MagicMock(DriverFactory)
-        resolver.instance(driver_factory)
-
-        bot_for_worker = Bot(
-            id=1,
-            name="Test Bot",
-            status="idle",
-            type="3d_printer"
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=bot_for_worker)
-
-        job = Job(
-            id=2,
-            name="Test Job",
-            status="assigned",
-            file_url="http://foo/bar"
-        )
-
-        bot_for_job = Bot(
-            id=2,
-            name="Another Test Bot",
-            status="job_assigned",
-            type="3d_printer",
-            current_job=job
-        )
-
-        JobEvents.JobAssigned(job, bot_for_job).fire()
-
-        worker.stop()
-
-        assert worker._current_job is None
-        driver_factory.get.assert_not_called()
-
-    def test_bot_has_job_available_with_mismatched_bot_id_does_nothing(self, resolver):
-        get_a_job = MagicMock(GetAJob)
-        resolver.instance(get_a_job)
-
-        bot_for_worker = Bot(
-            id=1,
-            name="Test Bot",
-            status="idle",
-            type="3d_printer"
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=bot_for_worker)
-
-        bot_for_event = Bot(
-            id=2,
-            name="Another Test Bot",
-            status="job_assigned",
-            type="3d_printer",
-            job_available=True
-        )
-
-        BotEvents.BotHasJobAvailable(bot_for_event).fire()
-
-        worker.stop()
-
-        get_a_job.assert_not_called()
-
-    def test_bot_has_job_available_with_offline_bot_does_nothing(self, resolver):
-        get_a_job = MagicMock(GetAJob)
-        resolver.instance(get_a_job)
-
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="offline",
-            type="3d_printer",
-            job_available=False
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=bot)
-
-        BotEvents.BotHasJobAvailable(bot).fire()
-
-        worker.stop()
-
-        get_a_job.assert_not_called()
-
-    def test_bot_has_job_available_with_error_bot_does_nothing(self, resolver):
-        get_a_job = MagicMock(GetAJob)
-        resolver.instance(get_a_job)
-
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="error",
-            type="3d_printer",
-            job_available=False
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=bot)
-
-        BotEvents.BotHasJobAvailable(bot).fire()
-
-        worker.stop()
-
-        get_a_job.assert_not_called()
-
-    def test_bot_has_job_available_calls_get_a_job(self, resolver):
-        get_a_job = MagicMock(GetAJob)
-        resolver.instance(get_a_job)
-
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="idle",
-            type="3d_printer",
-            job_available=False
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=bot)
-
-        BotEvents.BotHasJobAvailable(bot).fire()
-
-        worker.stop()
-
-        get_a_job.assert_called_once_with(bot.id)
-
-    def test_bot_with_driver_calls_connect(self, resolver):
+    def test_non_empty_driver_resolves_and_calls_connect(self, resolver, bot_worker_harness):
         driver_factory = MagicMock(DriverFactory)
         resolver.instance(driver_factory)
 
         dummy_driver = MagicMock(DummyDriver)
         driver_factory.get.return_value = dummy_driver
 
-        driver_config = {"type": "dummy"}
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="idle",
-            type="3d_printer",
-            driver=driver_config
-        )
+        bot: Bot = Mock(Bot)
+        bot.driver = {"type": "dummy"}
 
-        worker: BotWorker = resolver(BotWorker, bot=bot)
-        worker.stop()
+        with bot_worker_harness(bot) as _:
+            driver_factory.get.assert_called_once_with(bot.driver)
+            dummy_driver.connect.assert_called_once()
 
-        driver_factory.get.assert_called_once_with(driver_config)
-        dummy_driver.connect.assert_called_once()
-
-    def test_bot_updated_to_add_driver_calls_connect(self, resolver):
+    def test_driver_update_connects(self, resolver, bot_worker_harness):
         driver_factory = MagicMock(DriverFactory)
         resolver.instance(driver_factory)
 
         dummy_driver = MagicMock(DummyDriver)
         driver_factory.get.return_value = dummy_driver
 
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="idle",
-            type="3d_printer"
-        )
+        bot: Bot = Mock(Bot)
+        bot.driver = None
 
-        worker: BotWorker = resolver(BotWorker, bot=bot)
+        with bot_worker_harness(bot) as bwh:
+            driver_factory.get.assert_not_called()
+            dummy_driver.connect.assert_not_called()
 
-        driver_factory.get.assert_not_called()
+            driver_config = {"type": "dummy"}
+
+            bwh.send(DriverUpdatedCommand(driver_config))
+
+            driver_factory.get.assert_called_once_with(driver_config)
+            dummy_driver.connect.assert_called_once()
+
+    def test_driver_update_disconnects_current_connection_before_reconnecting(self, resolver,
+                                                                              bot_worker_harness):
+        driver_factory = Mock(DriverFactory)
+        resolver.instance(DriverFactory, driver_factory)
+
+        dummy_driver = MagicMock(DummyDriver)
+        driver_factory.get.return_value = dummy_driver
 
         driver_config = {"type": "dummy"}
+        bot: Bot = Mock(Bot)
         bot.driver = driver_config
 
-        BotEvents.BotUpdated(bot).fire()
+        with bot_worker_harness(bot) as bwh:
+            driver_factory.get.assert_called_once_with(driver_config)
+            dummy_driver.connect.assert_called_once()
 
-        worker.stop()
+            dummy_driver2 = MagicMock(DummyDriver)
+            driver_factory.reset_mock()
+            driver_factory.get.return_value = dummy_driver2
 
-        driver_factory.get.assert_called_once_with(driver_config)
-        dummy_driver.connect.assert_called_once()
+            bwh.send(DriverUpdatedCommand(driver_config))
 
-    def test_stopping_worker_calls_disconnect(self, resolver):
-        driver_factory = MagicMock(DriverFactory)
-        resolver.instance(driver_factory)
+            dummy_driver.disconnect.assert_called_once()
+            driver_factory.get.assert_called_once_with(driver_config)
+            dummy_driver2.connect.assert_called_once()
 
-        dummy_driver = MagicMock(DummyDriver)
-        driver_factory.get.return_value = dummy_driver
-
-        driver_config = {"type": "dummy"}
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="idle",
-            type="3d_printer",
-            driver=driver_config
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=bot)
-        time.sleep(0.125)  # TODO Fix test instability
-
-        driver_factory.get.assert_called_once_with(driver_config)
-        dummy_driver.connect.assert_called_once()
-        dummy_driver.disconnect.assert_not_called()
-
-        worker.stop()
-
-        dummy_driver.disconnect.assert_called_once()
-
-    def test_job_assigned_runs_through_job(self, resolver):
-        driver_factory = MagicMock(DriverFactory)
-        resolver.instance(driver_factory)
+    def test_driver_update_disconnects_current_connection_but_does_not_reconnect_on_none_driver(self, resolver,
+                                                                                                bot_worker_harness):
+        driver_factory = Mock(DriverFactory)
+        resolver.instance(DriverFactory, driver_factory)
 
         dummy_driver = MagicMock(DummyDriver)
         driver_factory.get.return_value = dummy_driver
 
         driver_config = {"type": "dummy"}
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="job_assigned",
-            type="3d_printer",
-            driver=driver_config
-        )
+        bot: Bot = Mock(Bot)
+        bot.driver = driver_config
 
-        worker: BotWorker = resolver(BotWorker, bot=bot)
+        with bot_worker_harness(bot) as bwh:
+            driver_factory.get.assert_called_once_with(driver_config)
+            dummy_driver.connect.assert_called_once()
 
-        time.sleep(0.125)  # TODO Fix test instability
+            driver_factory.reset_mock()
 
-        driver_factory.get.assert_called_once_with(driver_config)
-        dummy_driver.connect.assert_called_once()
-        dummy_driver.disconnect.assert_not_called()
+            bwh.send(DriverUpdatedCommand(None))
 
-        job = Job(
-            id=2,
-            name="Test Job",
-            status="assigned",
-            file_url="https://test.url/foo.gcode"
-        )
+            dummy_driver.disconnect.assert_called_once()
+            driver_factory.get.assert_not_called()
+
+    def test_run_job_command_starts_job(self, resolver, bot_worker_harness):
+        driver_factory = MagicMock(DriverFactory)
+        resolver.instance(driver_factory)
+
+        start_event = threading.Event()
+        dummy_driver = MagicMock(DummyDriver)
+
+        def start_side_effect(_filename):
+            nonlocal start_event
+            start_event.set()
+
+        dummy_driver.start.side_effect = start_side_effect
+        driver_factory.get.return_value = dummy_driver
+
+        file: Mock = Mock(File)
+        file.download_url = "http://example.com/foo.gcode"
+
+        job: Mock = Mock(Job)
+        job.id = uuid.uuid4()
+        job.file = file
+
+        driver_config = {"type": "dummy"}
+        bot: Mock = Mock(Bot)
+        bot.driver = driver_config
+        bot.current_job = job
 
         downloader = MagicMock(Downloader)
         downloader.download.return_value = "foo.gcode"
@@ -353,194 +139,28 @@ class TestBotWorker(object):
         finish_job = MagicMock(FinishJob)
         resolver.instance(finish_job)
 
-        job_assigned: JobEvents.JobAssigned = JobEvents.JobAssigned(job, bot)
-        job_assigned.fire()
+        with bot_worker_harness(bot) as bwh:
+            driver_factory.get.assert_called_once_with(driver_config)
+            dummy_driver.connect.assert_called_once()
 
-        # TODO: Fix fragile test
-        assert worker._current_job is not None
-        while worker._current_job is not None:
-            pass
+            bwh.send(RunJobCommand(job))
 
-        worker.stop()
+            started = start_event.wait(0.5)
+            if not started:
+                raise Exception("Driver start was never called!")
 
-        downloader.download.assert_called_once_with(job.file_url)
-        start_job.assert_called_once_with(job.id)
-        dummy_driver.run.assert_called_once_with("foo.gcode",
-                                                 update_job_progress=worker._update_job_progress)
-        finish_job.assert_called_once_with(job.id)
+            downloader.download.assert_called_once_with(file)
 
-        dummy_driver.disconnect.assert_called_once()
+            start_job.assert_called_once_with(job.id)
 
-    def test_bot_updated_does_not_force_driver_reconnect(self, resolver):
-        driver_factory = MagicMock(DriverFactory)
-        resolver.instance(driver_factory)
+            # Now we have to somehow wire up all the fun signals now that start has been called.
+            # Specifically, the driver needs some way to tell the bot worker thread that it's done with a job.
+            # It could return something maybe that's an event on whether the job is done? Ideally we could have more
+            # fulfilling conversations if need be. We'll eventually need to handle things like "update job progress"
+            # and "update temperature" as well. So it's all something to think about. I'm sure our worker manager
+            # would like to know when a job is finished too and I'd rather not have to have it polling and saying
+            # "hey, are you done?"
 
-        driver_config = {
-            "type": "gcode",
-            "config": {
-                "connection": {
-                    "port": "test-port",
-                    "baud": 115200
-                }
-            }
-        }
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="job_assigned",
-            type="3d_printer",
-            driver=driver_config
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=bot)
-
-        bot.status = "working"
-
-        BotEvents.BotUpdated(bot).fire()
-
-        worker.stop()
-
-        driver_factory.get.assert_called_once_with(driver_config)
-
-    def test_bot_updated_calls_disconnect_first_if_driver_changes(self, resolver):
-        driver_factory = MagicMock(DriverFactory)
-        resolver.instance(driver_factory)
-
-        driver_config_with_slow_baudrate = {
-            "type": "gcode",
-            "config": {
-                "connection": {
-                    "port": "test-port",
-                    "baud": 115200
-                }
-            }
-        }
-
-        driver_config_with_fast_baudrate = {
-            "type": "gcode",
-            "config": {
-                "connection": {
-                    "port": "test-port",
-                    "baud": 250000
-                }
-            }
-        }
-
-        gcode_driver_slow = Mock(PrintrunDriver)
-        resolver.instance(gcode_driver_slow)
-        gcode_driver_fast = Mock(PrintrunDriver)
-        resolver.instance(gcode_driver_fast)
-
-        manager = Mock()
-        manager.attach_mock(gcode_driver_slow, 'slow')
-        manager.attach_mock(gcode_driver_fast, 'fast')
-
-        def return_correct_driver(config):
-            if config == driver_config_with_slow_baudrate:
-                return gcode_driver_slow
-            if config == driver_config_with_fast_baudrate:
-                return gcode_driver_fast
-            pytest.fail(f"Bad config passed for getting the driver: {config}")
-
-        driver_factory.get.side_effect = return_correct_driver
-
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="job_assigned",
-            type="3d_printer",
-            driver=driver_config_with_slow_baudrate
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=bot)
-        time.sleep(0.125)  # TODO Fix test instability
-
-        new_bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="job_assigned",
-            type="3d_printer",
-            driver=driver_config_with_fast_baudrate
-        )
-
-        BotEvents.BotUpdated(new_bot).fire()
-        time.sleep(0.125)  # TODO Fix test instability
-
-        worker.stop()
-
-        manager.assert_has_calls([
-            call.slow.connect(),
-            call.slow.disconnect(),
-            call.fast.connect(),
-            call.fast.disconnect(),
-        ])
-
-    def test_bot_updated_to_idle_calls_get_a_job(self, resolver):
-        get_a_job = MagicMock(GetAJob)
-        resolver.instance(get_a_job)
-
-        old_bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="waiting",
-            type="3d_printer"
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=old_bot)
-
-        new_bot = Bot(
-            id=old_bot.id,
-            name=old_bot.name,
-            status="idle",
-            type=old_bot.type,
-        )
-
-        BotEvents.BotUpdated(new_bot).fire()
-
-        worker.stop()
-
-        get_a_job.assert_called_once_with(new_bot.id)
-
-    def test_bot_updated_with_different_bot_id_is_ignored(self, resolver):
-        get_a_job = MagicMock(GetAJob)
-        resolver.instance(get_a_job)
-
-        old_bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="waiting",
-            type="3d_printer"
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=old_bot)
-
-        new_bot = Bot(
-            id=2,
-            name=old_bot.name,
-            status="idle",
-            type=old_bot.type,
-        )
-
-        BotEvents.BotUpdated(new_bot).fire()
-        time.sleep(0.125)  # TODO Fix test instability
-
-        worker.stop()
-
-        get_a_job.assert_not_called()
-
-    def test_bot_worker_started_on_working_job_sends_error(self, resolver):
-        bot_error = MagicMock()
-        resolver.instance(BotError, bot_error)
-
-        bot = Bot(
-            id=1,
-            name="Test Bot",
-            status="working",
-            type="3d_printer"
-        )
-
-        worker: BotWorker = resolver(BotWorker, bot=bot)
-        time.sleep(0.125)  # TODO Fix test instability
-        worker.stop()
-
-        bot_error.assert_called_once_with(bot.id, 'Bot startup failure with job in working state')
+            # dummy_driver.run.assert_called_once_with("foo.gcode",
+            #                                          update_job_progress=worker._update_job_progress)
+            # finish_job.assert_called_once_with(job.id)

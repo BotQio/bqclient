@@ -1,17 +1,23 @@
 import os
 import tempfile
+import threading
+import uuid
 from typing import List, Dict, Any
 from unittest.mock import MagicMock, Mock, PropertyMock
 
 import pytest
 import requests
 from appdirs import AppDirs
+from faker import Faker
 from pysherplus.channel import EventCallback
 from requests import Response
 
+from bqclient.host.api.rest import RestApi
 from bqclient.host.framework.events import Event, EventManager
 from bqclient.host.framework.ioc import Resolver
 from bqclient.host.api.channels.host_channel import HostSocketChannel as BaseHostChannel
+from bqclient.host.models import Bot
+from bqclient.host.workers.bot_worker import BotWorker, ShutdownCommand, WorkerCommand, NopCommand
 
 
 @pytest.fixture
@@ -191,3 +197,48 @@ def host_channel(resolver):
     resolver.instance(BaseHostChannel, channel)
 
     return channel
+
+
+@pytest.fixture
+def rest_api(resolver):
+    rest_api = MagicMock(RestApi)
+    resolver.instance(rest_api)
+
+    return rest_api
+
+
+@pytest.fixture
+def bot_worker_harness(resolver):
+    def _inner(bot: Bot):
+        class BotWorkerHarness(object):
+            def __init__(self, b: Bot):
+                self._bot: Bot = b
+                self._bot_worker: BotWorker = resolver(BotWorker, bot=self._bot)
+                self._thread = threading.Thread(target=self._run, daemon=True)
+
+            def send(self, command: WorkerCommand):
+                self._bot_worker.input_queue.put(command)
+                completed = command.completed.wait(0.5)
+
+                if not completed:
+                    raise ValueError(f"Command {command} not completed in time!")
+
+            def _run(self):
+                self._bot_worker.event_loop()
+
+            def __enter__(self):
+                self._thread.start()
+                self.send(NopCommand())  # This helps avoid race conditions on assertions for the caller
+
+                return self
+
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                self.send(ShutdownCommand())
+                self._thread.join(1)
+
+                if self._thread.is_alive():
+                    raise Exception("Bot Worker thread did not shutdown in time when asked.")
+
+        return BotWorkerHarness(bot)
+
+    return _inner

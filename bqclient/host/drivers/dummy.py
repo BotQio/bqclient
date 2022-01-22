@@ -1,7 +1,15 @@
 import time
 
+from bqclient.host.drivers.driver_interface import DriverInterface
 
-class DummyDriver(object):
+
+class DummyDriver(DriverInterface):
+    def start(self, filename):
+        pass
+
+    def stop(self):
+        pass
+
     def __init__(self, config):
         self.command_delay = 100
 

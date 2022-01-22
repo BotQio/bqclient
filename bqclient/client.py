@@ -1,4 +1,4 @@
-from bqclient.bot_worker import BotWorker
+from bqclient.host.workers.bot_worker import BotWorker
 from bqclient.host import on
 from bqclient.host.events import HostEvents, AuthFlowEvents
 from bqclient.host.events import BotEvents
