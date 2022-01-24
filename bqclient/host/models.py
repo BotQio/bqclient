@@ -37,7 +37,7 @@ class ReadOnlyValue(Generic[T]):
                  ):
         self._name = name
         self._transform: Optional[Transform[T, U]] = transform
-        self._transformed_value = None
+        self._transformed_value: Dict[int, U] = {}
 
     def __get__(self, instance, owner):
         # getattr just to avoid the protected member warning
@@ -45,9 +45,10 @@ class ReadOnlyValue(Generic[T]):
         value = data.updated_or_data(self._name)
 
         if self._transform is not None:
-            if self._transformed_value is None:
-                self._transformed_value = self._transform.to_stated(value)
-            value = self._transformed_value
+            instance_id = id(instance)
+            if instance_id not in self._transformed_value:
+                self._transformed_value[instance_id] = self._transform.to_stated(value)
+            value = self._transformed_value[instance_id]
 
         return value
 
@@ -65,7 +66,7 @@ class Value(ReadOnlyValue[T]):
         # getattr just to avoid the protected member warning
         data: DataCarrier = getattr(instance, '_data')
         data.updated[self._name] = value
-        self._transformed_value = None
+        del self._transformed_value[id(instance)]
 
 
 class Model(object):
@@ -95,10 +96,14 @@ class DateTimeTransform(Transform[datetime, str]):
 
 
 class JsonTransform(Transform[Dict[str, Any], str]):
-    def from_stated(self, value: [Dict[str, Any]]) -> str:
+    def from_stated(self, value: Optional[Dict[str, Any]]) -> Optional[str]:
+        if value is None:
+            return None
         return json.dumps(value)
 
-    def to_stated(self, value: str) -> [Dict[str, Any]]:
+    def to_stated(self, value: str) -> Optional[Dict[str, Any]]:
+        if value is None:
+            return None
         return json.loads(value)
 
 

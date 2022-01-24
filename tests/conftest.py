@@ -2,6 +2,7 @@ import os
 import tempfile
 import threading
 import uuid
+from pathlib import Path
 from typing import List, Dict, Any
 from unittest.mock import MagicMock, Mock, PropertyMock
 
@@ -31,9 +32,17 @@ def resolver():
 
 
 def mock_appdirs():
+    def _make(directory):
+        if not hasattr(_make, 'temp_dir'):
+            _make.temp_dir = Path(tempfile.mkdtemp())
+
+        path = _make.temp_dir / directory
+        path.mkdir(parents=True, exist_ok=True)
+        return str(path)
+
     appdirs_mock = Mock(AppDirs)
-    appdirs_mock.user_config_dir = os.path.join(tempfile.mkdtemp(), 'user_config_dir')
-    appdirs_mock.user_log_dir = os.path.join(tempfile.mkdtemp(), 'user_log_dir')
+    appdirs_mock.user_config_dir = _make('user_config_dir')
+    appdirs_mock.user_log_dir = _make('user_log_dir')
 
     return appdirs_mock
 
