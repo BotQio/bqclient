@@ -3,6 +3,7 @@ from queue import Queue
 from threading import Event
 from typing import Optional
 
+from bqclient.host.api.commands.finish_job import FinishJob
 from bqclient.host.api.commands.start_job import StartJob
 from bqclient.host.downloader import Downloader
 from bqclient.host.drivers.driver_factory import DriverFactory
@@ -52,6 +53,8 @@ class BotWorker(object):
                  host_logging: HostLogging):
         self._resolver = resolver
         self._bot = bot
+        self._current_job: Optional[Job] = None
+
         self._logging = host_logging
         self._event_loop_stop: Event = Event()
         self._input_queue: Queue = Queue()
@@ -105,6 +108,8 @@ class BotWorker(object):
         driver_factory: DriverFactory = self._resolver(DriverFactory)
         self._current_driver: DriverInterface = driver_factory.get(self._current_driver_config)
 
+        self._current_driver.job_finished_callback = self._driver_handle_job_finished
+
         self._current_driver.connect()
         self._connection_attempted = True
 
@@ -116,6 +121,8 @@ class BotWorker(object):
         self._connection_attempted = False
 
     def _handle_run_job_command(self, command: RunJobCommand):
+        self._current_job = command.job
+
         downloader: Downloader = self._resolver(Downloader)
         local_path = downloader.download(command.job.file)
 
@@ -125,3 +132,7 @@ class BotWorker(object):
         self._current_driver.start(local_path)
 
         command.completed.set()
+
+    def _driver_handle_job_finished(self):
+        finish_job = self._resolver(FinishJob)
+        finish_job(self._current_job.id)

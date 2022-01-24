@@ -1,7 +1,15 @@
 import abc
 
+from bqclient.host.helpers.callback import Callback, GenericCallback
+
 
 class DriverInterface(abc.ABC):
+    connected_callback: Callback = Callback()
+    disconnected_callback: Callback = Callback()
+    job_started_callback: Callback = Callback()
+    job_finished_callback: Callback = Callback()
+    job_progress_callback: GenericCallback[float] = GenericCallback()
+
     @abc.abstractmethod
     def connect(self):  # TODO Error states?
         pass
@@ -11,7 +19,7 @@ class DriverInterface(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def start(self, filename):
+    def start(self, file_path):
         pass
 
     @abc.abstractmethod
