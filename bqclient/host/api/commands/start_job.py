@@ -1,6 +1,6 @@
 from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.events import JobEvents
-from bqclient.host.types import Job
+from bqclient.host.models import Job
 
 
 class StartJob(object):
@@ -13,11 +13,6 @@ class StartJob(object):
             "id": job_id
         })
         
-        job = Job(
-            id=response["id"],
-            name=response["name"],
-            status=response["status"],
-            file_url=response["url"]
-        )
+        job = Job(self.api.rest, response)
 
         JobEvents.JobStarted(job).fire()

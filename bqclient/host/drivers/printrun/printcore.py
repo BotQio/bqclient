@@ -242,7 +242,7 @@ class PrintCore(object):
     def _checksum(command):
         return reduce(lambda x, y: x ^ y, map(ord, command))
 
-    def start_print(self, gcode: List[str]):
+    def start(self, gcode: List[str]):
         """Start a print, gcode is an array of gcode commands.
         returns True on success, False if already printing.
         The print queue will be replaced with the contents of the data array,

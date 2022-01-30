@@ -1,6 +1,3 @@
-import json
-
-
 class HostRequest(object):
     def __init__(self,
                  id: int,
@@ -21,38 +18,3 @@ class Host(object):
                  name: str):
         self.id = id
         self.name = name
-
-
-class Job(object):
-    def __init__(self,
-                 id: int,
-                 name: str,
-                 status: str,
-                 file_url: str):
-        self.id = id
-        self.name = name
-        self.status = status
-        self.file_url = file_url
-
-
-class Bot(object):
-    def __init__(self,
-                 id: int,
-                 name: str,
-                 status: str,
-                 type: str,
-                 current_job: Job = None,
-                 driver=None,
-                 job_available=False):
-        self.id = id
-        self.name = name
-        self.status = status
-        self.type = type
-        self.current_job = current_job
-
-        if driver is not None \
-                and not isinstance(driver, dict) \
-                and isinstance(driver, str):
-            driver = json.loads(driver)
-        self.driver = driver
-        self.job_available = job_available

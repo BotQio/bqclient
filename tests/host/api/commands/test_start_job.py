@@ -14,7 +14,6 @@ class TestStartJob(object):
             "id": 1,
             "name": "My Job",
             "status": "in_progress",
-            "url": "file_url"
         }
         resolver.instance(api)
 
@@ -32,4 +31,3 @@ class TestStartJob(object):
         assert event.job.id == 1
         assert event.job.name == "My Job"
         assert event.job.status == "in_progress"
-        assert event.job.file_url == "file_url"

@@ -1,6 +1,6 @@
 from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.events import JobEvents
-from bqclient.host.types import Job
+from bqclient.host.models import Job
 
 
 class FinishJob(object):
@@ -12,12 +12,7 @@ class FinishJob(object):
         response = self.api.command("FinishJob", {
             "id": job_id
         })
-        
-        job = Job(
-            id=response["id"],
-            name=response["name"],
-            status=response["status"],
-            file_url=response["url"]
-        )
+
+        job = Job(self.api.rest, response)
 
         JobEvents.JobFinished(job).fire()

@@ -19,6 +19,10 @@ class BotQioApi(object):
         self._rest_api = rest_api
         self._websocket_api = websocket_api
 
+    @property
+    def rest(self) -> RestApi:
+        return self._rest_api
+
     def command(self, name, data=None):
         command = {
             "command": name
