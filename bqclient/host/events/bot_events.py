@@ -14,7 +14,3 @@ class BotEvents(EventBag):
     class BotUpdated(Event):
         def __init__(self, bot: Bot):
             self.bot = bot
-
-    class BotHasJobAvailable(Event):
-        def __init__(self, bot: Bot):
-            self.bot = bot
