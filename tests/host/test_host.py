@@ -7,6 +7,7 @@ from bqclient.host.events import HostEvents
 from bqclient.host.managers.bots_manager import BotsManager
 from bqclient.host.managers.available_connections_manager import AvailableConnectionsManager
 from bqclient.host.managers.websocket_manager import WebsocketManager
+from bqclient.host.managers.worker_manager import WorkerManager
 
 
 class TestHost(object):

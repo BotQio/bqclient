@@ -12,6 +12,7 @@ class DummyDriver(DriverInterface):
         self._should_pause.clear()
 
         self._job_thread = Thread(target=self._run)
+        self._job_thread.start()
 
     def stop(self):
         self._should_stop.set()

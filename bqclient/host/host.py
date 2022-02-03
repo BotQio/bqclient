@@ -8,6 +8,7 @@ from bqclient.host.framework.ioc import Resolver
 from bqclient.host.managers.bots_manager import BotsManager
 from bqclient.host.managers.available_connections_manager import AvailableConnectionsManager
 from bqclient.host.managers.websocket_manager import WebsocketManager
+from bqclient.host.managers.worker_manager import WorkerManager
 
 
 @bind_events
@@ -16,10 +17,12 @@ class Host(object):
                  resolver: Resolver,
                  websocket_manager: WebsocketManager,
                  bots_manager: BotsManager,
+                 worker_manager: WorkerManager,
                  available_connections_manager: AvailableConnectionsManager,
                  host_logging: HostLogging):
         self.resolver = resolver
         self.websocket_manager = websocket_manager
+        self.worker_manager = worker_manager
         self.bots_manager = bots_manager
         self.available_connections_manager = available_connections_manager
         self.host_logger = host_logging.get_logger('Host')

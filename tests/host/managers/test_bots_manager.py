@@ -2,7 +2,6 @@ import json
 from unittest.mock import Mock, MagicMock
 
 from bqclient.host.api.botqio_api import BotQioApi
-from bqclient.host.api.channels.host_channel import HostSocketChannel
 from bqclient.host.api.rest import RestApi
 from bqclient.host.events import BotEvents
 from bqclient.host.framework.recurring_task import RecurringTask
@@ -48,16 +47,18 @@ class TestBotsManager(object):
         api = Mock(BotQioApi)
         api.command.return_value = [
             {
-                "id": 1,
-                "name": "Test bot",
-                "type": "3d_printer",
-                "status": "Offline",
-                "driver": json.dumps({
-                    "type": "dummy"
-                }),
-                "job_available": False,
-                "current_job_id": None,
-            }
+                "data": {
+                    "id": 1,
+                    "name": "Test bot",
+                    "type": "3d_printer",
+                    "status": "Offline",
+                    "driver": json.dumps({
+                        "type": "dummy"
+                    }),
+                    "job_available": False,
+                    "current_job_id": None,
+                },
+            },
         ]
         resolver.instance(api)
 
@@ -87,16 +88,18 @@ class TestBotsManager(object):
         api = Mock(BotQioApi)
         api.command.return_value = [
             {
-                "id": 1,
-                "name": "Test bot",
-                "type": "3d_printer",
-                "status": "Offline",
-                "driver": json.dumps({
-                    "type": "dummy"
-                }),
-                "job_available": False,
-                "current_job_id": None,
-            }
+                "data": {
+                    "id": 1,
+                    "name": "Test bot",
+                    "type": "3d_printer",
+                    "status": "Offline",
+                    "driver": json.dumps({
+                        "type": "dummy"
+                    }),
+                    "job_available": False,
+                    "current_job_id": None,
+                },
+            },
         ]
         resolver.instance(api)
 
@@ -122,21 +125,23 @@ class TestBotsManager(object):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotRemoved)
 
-        bot = {
-            "id": 1,
-            "name": "Test bot",
-            "type": "3d_printer",
-            "status": "Offline",
-            "job_available": True,
-            "driver": None,
-            "current_job_id": None,
+        bot_data = {
+            "data": {
+                "id": 1,
+                "name": "Test bot",
+                "type": "3d_printer",
+                "status": "Offline",
+                "job_available": True,
+                "driver": None,
+                "current_job_id": None,
+            },
         }
 
         resolver.instance(Mock(RestApi))
         api = Mock(BotQioApi)
         api.command.side_effect = [
-            [bot],
-            [bot]
+            [bot_data],
+            [bot_data]
         ]
         resolver.instance(api)
 
@@ -163,19 +168,21 @@ class TestBotsManager(object):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotRemoved)
 
-        bot = {
-            "id": 1,
-            "name": "Test bot",
-            "type": "3d_printer",
-            "status": "Offline",
-            "job_available": True,
-            "driver": None,
-            "current_job_id": None,
+        bot_data = {
+            "data": {
+                "id": 1,
+                "name": "Test bot",
+                "type": "3d_printer",
+                "status": "Offline",
+                "job_available": True,
+                "driver": None,
+                "current_job_id": None,
+            },
         }
         resolver.instance(Mock(RestApi))
         api = Mock(BotQioApi)
         api.command.side_effect = [
-            [bot],
+            [bot_data],
             []
         ]
         resolver.instance(api)
@@ -212,21 +219,23 @@ class TestBotsManager(object):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotRemoved)
 
-        bot = {
-            "id": 1,
-            "name": "Test bot",
-            "type": "3d_printer",
-            "status": "Offline",
-            "job_available": True,
-            "driver": None,
-            "current_job_id": None,
+        bot_data = {
+            "data": {
+                "id": 1,
+                "name": "Test bot",
+                "type": "3d_printer",
+                "status": "Offline",
+                "job_available": True,
+                "driver": None,
+                "current_job_id": None,
+            },
         }
         resolver.instance(Mock(RestApi))
         api = Mock(BotQioApi)
         api.command.side_effect = [
-            [bot],
+            [bot_data],
             [],
-            [bot]
+            [bot_data]
         ]
         resolver.instance(api)
 
@@ -269,24 +278,28 @@ class TestBotsManager(object):
         api.command.side_effect = [
             [
                 {
-                    "id": 1,
-                    "name": "Test bot",
-                    "type": "3d_printer",
-                    "status": "Offline",
-                    "job_available": False,
-                    "driver": None,
-                    "current_job_id": None,
+                    "data": {
+                        "id": 1,
+                        "name": "Test bot",
+                        "type": "3d_printer",
+                        "status": "Offline",
+                        "job_available": False,
+                        "driver": None,
+                        "current_job_id": None,
+                    },
                 }
             ],
             [
                 {
-                    "id": 1,
-                    "name": "Test bot",
-                    "type": "3d_printer",
-                    "status": "Idle",
-                    "job_available": True,
-                    "driver": None,
-                    "current_job_id": None,
+                    "data": {
+                        "id": 1,
+                        "name": "Test bot",
+                        "type": "3d_printer",
+                        "status": "Idle",
+                        "job_available": True,
+                        "driver": None,
+                        "current_job_id": None,
+                    },
                 }
             ]
         ]
@@ -321,7 +334,7 @@ class TestBotsManager(object):
         assert bot_updated_event.bot.driver is None
         assert bot_updated_event.bot.current_job is None
 
-    def test_socket_subscribed_does_not_call_get_bots_on_poll(self, resolver, fakes_events, host_channel):
+    def test_socket_subscribed_does_not_call_get_bots_on_poll_twice(self, resolver, fakes_events, host_channel):
         fakes_events.fake(BotEvents.BotAdded)
         fakes_events.fake(BotEvents.BotRemoved)
 
@@ -332,9 +345,11 @@ class TestBotsManager(object):
         host_channel.subscribed = True
 
         bots_manager: BotsManager = resolver(BotsManager)
-        bots_manager.poll()
+        bots_manager.poll()  # The first call is to fill in any data we might not have from the socket
+        api.command.assert_called_once()
 
-        api.command.assert_not_called()
+        bots_manager.poll()  # This call should have no command invocation
+        api.command.assert_called_once()
 
         assert not fakes_events.fired(BotEvents.BotAdded)
         assert not fakes_events.fired(BotEvents.BotRemoved)

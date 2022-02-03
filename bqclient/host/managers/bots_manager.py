@@ -21,6 +21,7 @@ class BotsManager(object):
 
         self._bots = {}
         self._polling_thread = RecurringTask(60, self.poll)
+        self._called_once = False  # TODO Make this more stable if socket disconnects and reconnects
 
         self._host_channel.register('BotUpdated', self._socket_bot_updated)
         self._host_channel.register('JobAssignedToBot', self._socket_bot_updated)
@@ -30,13 +31,17 @@ class BotsManager(object):
 
     def poll(self):
         if self._host_channel.subscribed:
-            return
+            if self._called_once:
+                return
+            self._called_once = True
+        else:
+            self._called_once = False
 
         response = self.api.command("GetBots")
 
         _bot_ids_seen_in_response = []
         for bot_json in response:
-            bot = Bot(self._rest_api, bot_json)
+            bot = Bot(self._rest_api, bot_json["data"])
 
             if bot.id not in self._bots:
                 BotEvents.BotAdded(bot).fire()

@@ -2,6 +2,7 @@ import uuid
 from queue import Queue
 from unittest.mock import Mock, MagicMock
 
+from bqclient.host.api.commands.bot_error import BotError
 from bqclient.host.api.commands.get_a_job import GetAJob
 from bqclient.host.events import BotEvents
 from bqclient.host.managers.worker_manager import WorkerManager
@@ -159,6 +160,7 @@ class TestWorkerManager(object):
         bot.id = uuid.uuid4()
         bot.job_available = True
         bot.status = "idle"
+        bot.current_job_id = None
         worker: BotWorker = Mock(BotWorker)
 
         resolver.instance(BotWorker, worker)
@@ -177,6 +179,7 @@ class TestWorkerManager(object):
         bot.id = uuid.uuid4()
         bot.job_available = False
         bot.status = "idle"
+        bot.current_job_id = None
         worker: BotWorker = Mock(BotWorker)
 
         resolver.instance(BotWorker, worker)
@@ -217,7 +220,59 @@ class TestWorkerManager(object):
         bot: Bot = MagicMock(Bot)
         bot.id = uuid.uuid4()
         bot.job_available = False
-        bot.status = "offline"
+        bot.current_job_id = None
+        bot.status = "idle"
+        worker: BotWorker = Mock(BotWorker)
+        queue: MagicMock = MagicMock(Queue)
+
+        worker.input_queue = queue
+        resolver.instance(BotWorker, worker)
+
+        get_a_job = MagicMock(GetAJob)
+        resolver.instance(get_a_job)
+
+        _ = resolver(WorkerManager)
+
+        BotEvents.BotAdded(bot).fire()
+
+        get_a_job.assert_not_called()
+
+        updated_bot: Bot = MagicMock(Bot)
+        updated_bot.id = bot.id
+
+        updated_bot.driver = None
+        updated_bot.job_available = True
+        updated_bot.current_job_id = None
+        updated_bot.status = "offline"
+        BotEvents.BotUpdated(updated_bot).fire()
+
+        get_a_job.assert_not_called()
+
+    def test_bot_added_with_current_job_id_and_job_available_does_not_call_get_a_job(self, resolver):
+        bot: Bot = MagicMock(Bot)
+        bot.id = uuid.uuid4()
+        bot.job_available = True
+        bot.status = "waiting"
+        bot.current_job_id = uuid.uuid4()
+        worker: BotWorker = Mock(BotWorker)
+
+        resolver.instance(BotWorker, worker)
+
+        get_a_job = MagicMock(GetAJob)
+        resolver.instance(get_a_job)
+
+        _ = resolver(WorkerManager)
+
+        BotEvents.BotAdded(bot).fire()
+
+        get_a_job.assert_not_called()
+
+    def test_bot_updated_with_current_job_id_and_job_available_does_not_call_get_a_job(self, resolver):
+        bot: Bot = MagicMock(Bot)
+        bot.id = uuid.uuid4()
+        bot.job_available = False
+        bot.status = "waiting"
+        bot.current_job_id = uuid.uuid4()
         worker: BotWorker = Mock(BotWorker)
 
         resolver.instance(BotWorker, worker)
@@ -270,6 +325,7 @@ class TestWorkerManager(object):
         bot.driver = None
         bot.job_available = True
         bot.status = "idle"
+        bot.current_job_id = None
         worker: BotWorker = Mock(BotWorker)
         queue: MagicMock = MagicMock(Queue)
 
@@ -331,3 +387,24 @@ class TestWorkerManager(object):
         BotEvents.BotUpdated(updated_bot).fire()
 
         get_a_job.assert_called_once_with(bot.id)
+
+    def test_bot_added_in_working_state_throws_error(self, resolver):
+        bot: Bot = MagicMock(Bot)
+        bot.id = uuid.uuid4()
+        bot.job_available = False
+        bot.status = "working"
+        worker: BotWorker = Mock(BotWorker)
+
+        resolver.instance(BotWorker, worker)
+
+        bot_error = MagicMock(BotError)
+        resolver.instance(bot_error)
+
+        _ = resolver(WorkerManager)
+
+        BotEvents.BotAdded(bot).fire()
+
+        bot_error.assert_called_once()
+        args = bot_error.call_args[0]
+        assert args[0] == bot.id
+        assert args[1] == 'Bot startup in working mode.'

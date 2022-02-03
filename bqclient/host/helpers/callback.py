@@ -1,4 +1,4 @@
-from typing import Callable, Any, Generic, TypeVar, Optional
+from typing import Callable, Any, Generic, TypeVar, Optional, Dict
 
 T = TypeVar('T')
 
@@ -22,37 +22,45 @@ The callbacks are safe to call even if there is no callback assigned to them.
 
 class GenericCallback(Generic[T]):
     def __init__(self):
-        self._cb: Optional[Callable[[T], Any]] = None
+        self._callbacks: Dict[int, Optional[Callable[[T], Any]]] = {}
 
     def __get__(self, instance, owner) -> Callable[[T], Any]:
         def _inner(value: T):
-            if self._cb is None:
+            cb = self._callbacks.setdefault(_inner.instance_id, None)
+
+            if cb is None:
                 return
             try:
-                self._cb(value)
-            except BaseException:
-                pass
+                cb(value)
+            except BaseException as ex:
+                print(ex)
+
+        _inner.instance_id = id(instance)
 
         return _inner
 
     def __set__(self, instance, value: Callable[[T], Any]):
-        self._cb = value
+        self._callbacks[id(instance)] = value
 
 
 class Callback(object):
     def __init__(self):
-        self._cb: Optional[Callable[[], Any]] = None
+        self._callbacks: Dict[int, Optional[Callable[[], Any]]] = {}
 
     def __get__(self, instance, owner) -> Callable[[], Any]:
         def _inner():
-            if self._cb is None:
+            cb = self._callbacks.setdefault(_inner.instance_id, None)
+
+            if cb is None:
                 return
             try:
-                self._cb()
-            except BaseException:
-                pass
+                cb()
+            except BaseException as ex:
+                print(ex)
+
+        _inner.instance_id = id(instance)
 
         return _inner
 
     def __set__(self, instance, value: Callable[[], Any]):
-        self._cb = value
+        self._callbacks[id(instance)] = value
