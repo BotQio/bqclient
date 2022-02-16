@@ -48,7 +48,10 @@ class PrintrunDriver(DriverInterface):
         while True:
             time.sleep(60)
 
+            print_started = False
+
             while self.printcore.printing:
+                print_started = True
                 time.sleep(10)
 
                 queue_length = len(self.printcore.main_queue)
@@ -57,3 +60,6 @@ class PrintrunDriver(DriverInterface):
 
                 progress = 100.0 * (float(self.printcore.main_queue_index) / float(queue_length))
                 self.job_progress_callback(progress)
+
+            if print_started:
+                self.job_finished_callback()
