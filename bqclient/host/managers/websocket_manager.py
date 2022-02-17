@@ -7,6 +7,7 @@ from pysherplus.pusher import Pusher
 from bqclient.host.api.commands.info import Info
 from bqclient.host.api.rest import RestApi
 from bqclient.host.framework.ioc import Resolver
+from bqclient.host.framework.logging import HostLogging
 
 
 class RestApiAuthentication(PysherAuthentication):
@@ -38,8 +39,10 @@ class RestApiAuthentication(PysherAuthentication):
 
 class WebsocketManager(object):
     def __init__(self,
-                 resolver: Resolver):
+                 resolver: Resolver,
+                 logging: HostLogging):
         self._resolver = resolver
+        self._logger = logging.get_logger("WebsocketManager")
         self._thread = Thread(target=self._run)
 
     def start(self):
@@ -52,8 +55,18 @@ class WebsocketManager(object):
         ws_url = info_result['websocket']['url']
         auth_url = info_result['websocket']['auth']
 
+        if ws_url is None:
+            self._logger.info("Websocket URL was not found")
+            return
+
+        if auth_url is None:
+            self._logger.info("Websocket auth URL was not found")
+            return
+
         rest_api: RestApi = self._resolver(RestApi)
         authenticator = RestApiAuthentication(auth_url, rest_api)
         pusher: Pusher = Pusher(ws_url, authenticator=authenticator)
         self._resolver.instance(pusher)
+
+        self._logger.info(f"Connecting to websocket {ws_url} using auth url {auth_url}")
         pusher.connect()

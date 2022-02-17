@@ -6,15 +6,18 @@ from pysherplus.pusher import Pusher
 
 from bqclient.host.api.server import Server
 from bqclient.host.framework.ioc import Resolver, singleton
+from bqclient.host.framework.logging import HostLogging
 
 
 @singleton
 class HostSocketChannel(object):
     def __init__(self,
                  server: Server,
-                 resolver: Resolver):
+                 resolver: Resolver,
+                 logging: HostLogging):
         self._resolver = resolver
         self._server = server
+        self._logger = logging.get_logger('HostSocketChannel')
         self._host_channel_name = f'private-hosts.{self._server.host_id}'
 
         self._client: Optional[Pusher] = None
@@ -36,7 +39,7 @@ class HostSocketChannel(object):
         self._client: Pusher = self._resolver(Pusher)
         self._host_channel = self._client[self._host_channel_name]
         self._host_channel['*'].register(self._event)
-        print("Pusher available!")
+        self._logger.info("Pusher instance is now available")
 
     @property
     def subscribed(self) -> bool:
