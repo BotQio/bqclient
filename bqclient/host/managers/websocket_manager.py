@@ -1,6 +1,11 @@
+import logging
+import logging.handlers
+from pathlib import Path
 from threading import Thread
 from typing import Optional
 
+from appdirs import AppDirs
+import pysherplus.connection
 from pysherplus.authentication import PysherAuthentication, AuthResult
 from pysherplus.pusher import Pusher
 
@@ -40,10 +45,21 @@ class RestApiAuthentication(PysherAuthentication):
 class WebsocketManager(object):
     def __init__(self,
                  resolver: Resolver,
-                 logging: HostLogging):
+                 app_dirs: AppDirs,
+                 host_logging: HostLogging):
         self._resolver = resolver
-        self._logger = logging.get_logger("WebsocketManager")
+        self._logger = host_logging.get_logger("WebsocketManager")
         self._thread = Thread(target=self._run)
+
+        # Setup logging for pysher connection
+        _websocket_logger = logging.getLogger(pysherplus.connection.Connection.__module__)
+
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        log_file_name = Path(app_dirs.user_log_dir) / 'websocket.log'
+        _fh = logging.handlers.RotatingFileHandler(log_file_name, backupCount=10)
+        _fh.setLevel(logging.DEBUG)
+        _fh.setFormatter(formatter)
+        _websocket_logger.addHandler(_fh)
 
     def start(self):
         self._thread.start()

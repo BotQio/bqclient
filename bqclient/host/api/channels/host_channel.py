@@ -49,7 +49,7 @@ class HostSocketChannel(object):
         return self._host_channel.subscribed
 
     def _event(self, event_name: str, data: Any):
-        print(f"Event! {event_name} {data}")
+        self._logger.info(f"Event! {event_name} {data}")
 
         if isinstance(data, str):
             data = json.loads(data)
