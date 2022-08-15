@@ -3,6 +3,7 @@ from typing import Optional, Any, Dict, List, Callable
 
 from pysherplus.channel import Channel, EventCallback
 from pysherplus.pusher import Pusher
+from sentry_sdk import capture_exception
 
 from bqclient.host.api.server import Server
 from bqclient.host.framework.ioc import Resolver, singleton
@@ -49,8 +50,6 @@ class HostSocketChannel(object):
         return self._host_channel.subscribed
 
     def _event(self, event_name: str, data: Any):
-        self._logger.info(f"Event! {event_name} {data}")
-
         if isinstance(data, str):
             data = json.loads(data)
 
@@ -65,4 +64,7 @@ class HostSocketChannel(object):
 
             listener: EventCallback
             for listener in self._listeners[name]:
-                listener(name, data)
+                try:
+                    listener(name, data)
+                except Exception as ex:
+                    capture_exception(ex)

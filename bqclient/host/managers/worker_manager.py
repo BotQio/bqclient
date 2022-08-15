@@ -1,7 +1,5 @@
 from typing import Dict
 
-from deepdiff import DeepDiff
-
 from bqclient.host import on
 from bqclient.host.api.commands.bot_error import BotError
 from bqclient.host.api.commands.get_a_job import GetAJob
@@ -67,8 +65,7 @@ class WorkerManager(object):
         worker: BotWorker = self._bot_workers[event.bot.id]
         self._bots[event.bot.id] = updated_bot  # TODO Tests didn't catch the need for this
 
-        driver_diff = DeepDiff(current_bot.driver, updated_bot.driver)
-        if driver_diff:
+        if current_bot.driver != updated_bot.driver:
             worker.input_queue.put(DriverUpdatedCommand(updated_bot.driver))
 
         call_get_a_job = self._should_get_a_job(current_bot, updated_bot)

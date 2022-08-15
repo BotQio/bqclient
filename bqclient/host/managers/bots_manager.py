@@ -1,6 +1,4 @@
-from typing import List, Any
-
-from deepdiff import DeepDiff
+from typing import Any
 
 from bqclient.host.api.botqio_api import BotQioApi
 from bqclient.host.api.channels.host_channel import HostSocketChannel
@@ -19,7 +17,7 @@ class BotsManager(object):
         self._rest_api = rest_api
         self._host_channel = host_channel
 
-        self._bots = {}
+        self._bots: [str, Bot] = {}
         self._polling_thread = RecurringTask(60, self.poll)
         self._called_once = False  # TODO Make this more stable if socket disconnects and reconnects
 
@@ -46,8 +44,7 @@ class BotsManager(object):
             if bot.id not in self._bots:
                 BotEvents.BotAdded(bot).fire()
             else:
-                diff = DeepDiff(self._bots[bot.id], bot)
-                if diff:
+                if self._bots[bot.id] != bot:
                     BotEvents.BotUpdated(bot).fire()
 
             _bot_ids_seen_in_response.append(bot.id)
@@ -64,8 +61,7 @@ class BotsManager(object):
         if bot.id not in self._bots:
             BotEvents.BotAdded(bot).fire()
         else:
-            diff = DeepDiff(self._bots[bot.id], bot)
-            if diff:
+            if self._bots[bot.id] != bot:
                 BotEvents.BotUpdated(bot).fire()
 
         self._bots[bot.id] = bot

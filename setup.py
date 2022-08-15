@@ -54,7 +54,7 @@ setup(name="bqclient",
           'requests',
           'pyserial',
           'pysherplus',
-          'sentry-sdk==0.10.2',
+          'sentry-sdk',
           'zeroconf'
       ],
       tests_require=[

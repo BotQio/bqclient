@@ -1,7 +1,7 @@
 import abc
 import json
 from datetime import datetime
-from typing import TYPE_CHECKING, TypeVar, Generic, Optional, Callable, Dict, Any
+from typing import TYPE_CHECKING, TypeVar, Generic, Optional, Dict, Any, Union
 
 if TYPE_CHECKING:
     from bqclient.host.api.rest import RestApi
@@ -14,6 +14,12 @@ class DataCarrier(object):
 
     def updated_or_data(self, name: str):
         return self.updated[name] if name in self.updated else self.data[name]
+
+    def __eq__(self, other: 'DataCarrier'):
+        updated_us = {**self.data, **self.updated}
+        updated_other = {**other.data, **other.updated}
+
+        return updated_us == updated_other
 
 
 T = TypeVar('T')
@@ -78,6 +84,16 @@ class Model(object):
 
     def refresh(self):
         self._data = self._api.bots.fetch(self.id)._data
+
+    def __eq__(self, other: Union['Model', DataCarrier, Dict]):
+        if isinstance(other, Model):
+            other = other._data
+        elif isinstance(other, DataCarrier):
+            pass  # Compare directly below
+        elif isinstance(other, Dict):
+            other = DataCarrier(other)
+
+        return self._data == other
 
 
 class DateTimeTransform(Transform[datetime, str]):
